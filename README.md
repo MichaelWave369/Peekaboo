@@ -19,17 +19,48 @@ Peekaboo is a public-data map for exploring surveillance infrastructure voluntar
 
 Peekaboo does **not** discover cameras, probe devices, access live feeds, identify surveillance blind spots, or claim that an unmapped area has no surveillance. It only visualizes data already published in OpenStreetMap.
 
-## v0.4 features
+## v0.5 features
+
+### Dense-map rendering
+
+- Deterministic client-side clustering activates automatically for dense result sets at lower zoom levels.
+- Clusters are only a rendering optimization: record totals, filters and exports continue to operate on the underlying OSM records.
+- Clicking a cluster zooms toward the grouped records; high zoom restores individual markers.
+- No additional map service, analytics service or clustering dependency is required.
+
+### Metadata detail diagnostics
+
+Peekaboo now computes a **metadata detail score** for each loaded record based on descriptive fields such as source identity, classification, timestamp, zone, operator, camera type, direction, manufacturer and model.
+
+- The score measures metadata completeness only.
+- It is explicitly labeled **NOT TRUTH SCORE** in the interface.
+- Missing or generic fields are shown in the object inspector.
+- Dataset-level average detail and high/medium/low detail counts can be included in the exported audit manifest.
+
+### Co-location diagnostics
+
+- Peekaboo detects mapped-record pairs within roughly 12 meters using a bounded spatial index.
+- These are labeled **co-located candidates**, never automatically deduplicated.
+- Nearby records may represent duplicate mapping, multiple real devices on one structure, or legitimate overlapping records.
+- The selected-object inspector explains the ambiguity instead of silently merging evidence.
+
+### Failure recovery
+
+- Failed queries preserve the previously loaded result set instead of replacing it with a misleading empty map.
+- Query errors expose an explicit retry control.
+- Browser online/offline state is surfaced in the interface.
+- Superseded requests are aborted, including cleanup when the app unmounts.
+- A top-level React error boundary fails into a recovery screen rather than leaving a partially rendered map that appears trustworthy.
 
 ### Search and auditability
 
-- Search within the currently loaded public OSM records by name, operator, manufacturer, model, zone, category, object ID and raw tag text.
+- Search within currently loaded public OSM records by name, operator, manufacturer, model, zone, category, object ID and raw tag text.
 - Search state is preserved in copyable Peekaboo view links alongside map center, zoom and visible layers.
-- Selected objects automatically close if filtering/search removes them from the visible result set, preventing stale inspector state.
+- Selected objects automatically close if filtering/search removes them from the visible result set.
 
 ### OSM record age
 
-Peekaboo now separates **record age** from **device status**.
+Peekaboo separates **record age** from **device status**.
 
 - `< 1 year`, `1–3 years`, `3+ years`, and `unknown/no date` buckets summarize the last OSM edit timestamp.
 - Each selected object shows its OSM record-age class.
@@ -67,7 +98,7 @@ Peekaboo treats mapped Flock Safety ALPR devices as a first-class category while
 - One-click copyable view links.
 - GeoJSON export of the currently visible loaded records.
 - CSV export with spreadsheet-formula injection neutralization for untrusted public text fields.
-- JSON manifest export containing schema version, source endpoint, query metadata, category counts and OSM record-age summary.
+- JSON manifest export containing schema version, source endpoint, query metadata, category counts, OSM record-age summary, metadata-detail diagnostics and co-location diagnostics.
 - GeoJSON includes manufacturer/model/vendor-evidence fields when available.
 - Export metadata explicitly states that vendor identity is an OSM claim and missing OSM records do not imply absence of surveillance.
 
@@ -77,6 +108,7 @@ Peekaboo treats mapped Flock Safety ALPR devices as a first-class category while
 - No backend, database, accounts or API keys.
 - No live-feed access or device discovery.
 - No routing around surveillance or blind-spot inference.
+- No automatic deletion or merging of suspected duplicate records.
 - Responsive desktop/mobile UI.
 
 ## Run locally
@@ -118,8 +150,13 @@ OpenStreetMap contributors
         │
         ├── vendor-claim provenance
         ├── OSM record-age classification
+        ├── metadata-detail diagnostics
+        ├── bounded co-location diagnostics
         ├── loaded-record search
         └── GeoJSON / CSV / manifest exports
+        │
+        ▼
+ deterministic display clustering
         │
         ▼
  React + Leaflet interface
@@ -137,14 +174,16 @@ Peekaboo deliberately separates three claims that are often blurred together:
 
 Only records that satisfy both the Flock-vendor claim and the ALPR/Falcon condition enter the dedicated **Flock Safety ALPR** layer. A Flock manufacturer tag by itself is not enough to label an arbitrary surveillance device as an ALPR.
 
-OSM data can be incomplete, outdated, disputed or incorrectly tagged. Peekaboo therefore exposes the original object, changeset, raw tags and record age so users can inspect the evidence rather than treating the rendered marker as an independently verified fact.
+OSM data can be incomplete, outdated, disputed or incorrectly tagged. Peekaboo therefore exposes the original object, changeset, raw tags, record age and descriptive-metadata gaps so users can inspect the evidence rather than treating the rendered marker as an independently verified fact.
 
-## Mapping signal
+## Mapping signal and diagnostics
 
 The **Mapping Signal** panel intentionally does not call itself "coverage confidence." An empty OpenStreetMap result cannot establish that a real location has no cameras.
 
 - **Mapped density**: loaded OSM surveillance objects per approximate square kilometer of the viewport that produced the result set.
 - **Tag detail**: how often loaded objects contain descriptive fields such as zone, operator, camera type and direction.
+- **Metadata detail score**: descriptive-field completeness, not claim truthfulness.
+- **Co-located candidates**: nearby mapped records, not automatically duplicate devices.
 
 When the map moves after a scan, Peekaboo keeps the previous data visible but marks it stale relative to the current viewport until the user rescans.
 
