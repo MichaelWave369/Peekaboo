@@ -1,15 +1,23 @@
+import {
+  boundsAdapter,
+  combineCompleteShardResults,
+  isShardableOverpassFailure,
+  splitBoundsIntoQuadrants,
+} from './sharding.js'
+
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ]
 
-export const DATA_SCHEMA_VERSION = '0.4'
-const CACHE_PREFIX = 'peekaboo:overpass:v4:'
+export const DATA_SCHEMA_VERSION = '0.5'
+const CACHE_PREFIX = 'peekaboo:overpass:v5:'
 const CACHE_TTL_MS = 5 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 22 * 1000
 const MAX_RENDER_OBJECTS = 6000
 const FLOCK_WIKIDATA = 'Q108485435'
 const DAY_MS = 24 * 60 * 60 * 1000
+const SHARD_DELAY_MS = 650
 
 export const CATEGORY_META = {
   flock: { label: 'Flock Safety ALPR', glyph: 'F' },
@@ -264,7 +272,7 @@ async function requestEndpoint(url, body, externalSignal) {
   }
 }
 
-export async function fetchSurveillance(bounds, signal, { force = false } = {}) {
+export async function fetchSurveillanceSingle(bounds, signal, { force = false } = {}) {
   const fingerprint = boundsFingerprint(bounds)
   if (!force) {
     const cached = readCache(fingerprint)
@@ -277,6 +285,10 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
         fingerprint,
         attempts: 0,
         failures: cached.failures || [],
+        scanMode: cached.scanMode || 'single',
+        shardCount: cached.shardCount || 1,
+        shardDetails: cached.shardDetails || [],
+        fallbackReason: cached.fallbackReason || null,
       }
     }
   }
@@ -314,6 +326,10 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
         fingerprint,
         attempts: errors.length + 1,
         failures: [...errors],
+        scanMode: 'single',
+        shardCount: 1,
+        shardDetails: [],
+        fallbackReason: null,
       }
       writeCache(fingerprint, result)
       return result
@@ -324,6 +340,78 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
   }
 
   throw new Error(`All Overpass endpoints failed. ${errors.join(' • ')}`)
+}
+
+export async function fetchSurveillance(bounds, signal, { force = false } = {}) {
+  const fingerprint = boundsFingerprint(bounds)
+
+  try {
+    const result = await fetchSurveillanceSingle(bounds, signal, { force })
+    return {
+      ...result,
+      scanMode: result.scanMode || 'single',
+      shardCount: result.shardCount || 1,
+      shardDetails: result.shardDetails || [],
+      fallbackReason: result.fallbackReason || null,
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') throw error
+    const reason = error.message || 'Unknown Overpass failure.'
+    if (!isShardableOverpassFailure(reason)) throw error
+
+    const shards = splitBoundsIntoQuadrants(bounds)
+    const completed = []
+    const allFailures = [`FULL VIEW: ${reason}`]
+    let attempts = OVERPASS_ENDPOINTS.length
+
+    for (let index = 0; index < shards.length; index += 1) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      if (index > 0) await abortableDelay(SHARD_DELAY_MS, signal)
+      const shard = shards[index]
+
+      try {
+        const result = await fetchSurveillanceSingle(boundsAdapter(shard), signal, { force })
+        attempts += Number(result.attempts || 0)
+        result.failures?.forEach((failure) => allFailures.push(`${shard.id}: ${failure}`))
+        completed.push({
+          id: shard.id,
+          complete: true,
+          items: result.items,
+          endpoint: result.endpoint,
+          cached: Boolean(result.cached),
+          fetchedAt: result.fetchedAt,
+          attempts: result.attempts || 0,
+        })
+      } catch (shardError) {
+        if (shardError.name === 'AbortError') throw shardError
+        throw new Error(`Adaptive scan aborted: shard ${shard.id} failed. No partial results were accepted. ${shardError.message || shardError}`)
+      }
+    }
+
+    const items = combineCompleteShardResults(completed, { maxItems: MAX_RENDER_OBJECTS })
+    const endpoints = [...new Set(completed.map((entry) => entry.endpoint).filter(Boolean))]
+    const timestamps = completed.map((entry) => Number(entry.fetchedAt) || 0).filter(Boolean)
+    const result = {
+      items,
+      endpoint: endpoints.length === 1 ? endpoints[0] : `${endpoints.length} Overpass endpoints`,
+      cached: completed.every((entry) => entry.cached),
+      fetchedAt: timestamps.length ? Math.max(...timestamps) : Date.now(),
+      fingerprint,
+      attempts,
+      failures: allFailures,
+      scanMode: 'sharded',
+      shardCount: completed.length,
+      shardDetails: completed.map(({ id, endpoint, cached, attempts: shardAttempts }) => ({
+        id,
+        endpoint,
+        cached,
+        attempts: shardAttempts,
+      })),
+      fallbackReason: reason,
+    }
+    writeCache(fingerprint, result)
+    return result
+  }
 }
 
 export function boundsAreaKm2(bounds) {
@@ -451,6 +539,11 @@ export function buildManifest(items, query = {}) {
       failures: query.failures || [],
       durationMs: query.durationMs ?? null,
       loadedAreaKm2: query.loadedAreaKm2 ?? null,
+      scanMode: query.scanMode || 'single',
+      shardCount: query.shardCount || 1,
+      shardDetails: query.shardDetails || [],
+      fallbackReason: query.fallbackReason || null,
+      completenessPolicy: 'Sharded fallback is all-or-nothing. Partial shard results are rejected.',
     },
   }
 }
