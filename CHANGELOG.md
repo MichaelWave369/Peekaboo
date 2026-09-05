@@ -1,5 +1,28 @@
 # Peekaboo changelog
 
+## 1.2.0
+
+Public webcam viewing with explicit feed provenance.
+
+- Added a **Public live cam** context based only on valid `contact:webcam=*` links carried by OSM surveillance records.
+- Added a **Weather / conditions cam** context for public webcams whose OSM name/description indicates current-conditions use.
+- Added **LIVE CAMS** and **WEATHER** quick-filter chips to the map.
+- Added an object-level public webcam viewer.
+- Direct HTTPS image feeds can render in Peekaboo with a manual refresh control.
+- Direct HTTPS MP4/WebM/OGG media can play in Peekaboo with browser controls.
+- Direct HTTPS HLS (`.m3u8`) links use native browser playback where supported and always retain an external published-feed fallback.
+- Ordinary webcam webpages are never automatically embedded. Peekaboo opens them externally instead.
+- Feed media never auto-loads. The user must explicitly press **LOAD PUBLIC FEED**.
+- Webcam URLs are rejected when they use unsupported schemes, credentials, localhost, or common private/link-local address ranges.
+- Added regression tests for URL safety, media classification, weather hints and public-feed evidence.
+- Updated social metadata and public release labels for v1.2.
+
+### Public feed semantics
+
+A camera is viewable only when its OSM record explicitly publishes a valid `contact:webcam` URL. A camera name, operator, location, or surveillance category alone never creates feed access.
+
+Peekaboo does not probe cameras, guess stream paths, discover exposed devices, bypass authentication, or convert ordinary surveillance records into live feeds.
+
 ## 1.1.0
 
 Public-use polish and conservative context layers.
