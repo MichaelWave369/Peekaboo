@@ -15,6 +15,12 @@ import {
   toGeoJSON,
 } from './data.js'
 import {
+  CONTEXT_META,
+  contextEvidence,
+  contextSummary,
+  matchesContextFilters,
+} from './context.js'
+import {
   clusterRecords,
   diagnosticsManifest,
   metadataProfile,
@@ -40,13 +46,29 @@ function defaultFilters() {
   return Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, true]))
 }
 
+function defaultContextFilters() {
+  return Object.fromEntries(Object.keys(CONTEXT_META).map((key) => [key, false]))
+}
+
 function parseInitialState() {
-  const fallback = { center: START, zoom: START_ZOOM, filters: defaultFilters(), search: '' }
+  const fallback = {
+    center: START,
+    zoom: START_ZOOM,
+    filters: defaultFilters(),
+    contextFilters: defaultContextFilters(),
+    search: '',
+  }
   try {
     const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     const map = params.get('map')
     const layers = params.get('layers')
-    const next = { ...fallback, filters: defaultFilters(), search: params.get('q') || '' }
+    const contexts = params.get('contexts')
+    const next = {
+      ...fallback,
+      filters: defaultFilters(),
+      contextFilters: defaultContextFilters(),
+      search: params.get('q') || '',
+    }
 
     if (map) {
       const [zoomRaw, latRaw, lonRaw] = map.split('/')
@@ -63,6 +85,12 @@ function parseInitialState() {
       const active = new Set(layers.split(',').filter(Boolean))
       next.filters = Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, active.has(key)]))
     }
+
+    if (contexts !== null) {
+      const active = new Set(contexts.split(',').filter(Boolean))
+      next.contextFilters = Object.fromEntries(Object.keys(CONTEXT_META).map((key) => [key, active.has(key)]))
+    }
+
     return next
   } catch {
     return fallback
@@ -145,6 +173,7 @@ function MapRecords({ entries, selected, onSelect, changeStatusById }) {
 
     const item = entry.item
     const change = changeStatusById?.get(item.id)
+    const contexts = Object.keys(contextEvidence(item.tags || {}))
     return (
       <Marker
         key={item.id}
@@ -155,6 +184,7 @@ function MapRecords({ entries, selected, onSelect, changeStatusById }) {
         <Popup>
           <strong>{item.name}</strong><br />
           {CATEGORY_META[item.category]?.label || 'Surveillance object'}<br />
+          {contexts.length > 0 && <>Context: {contexts.map((key) => CONTEXT_META[key]?.label || key).join(', ')}<br /></>}
           {item.manufacturer && <>Manufacturer: {item.manufacturer}<br /></>}
           {item.model && <>Model: {item.model}<br /></>}
           Zone: {item.zone}<br />
@@ -222,6 +252,7 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [request, setRequest] = useState({ id: 0, force: false })
   const [filters, setFilters] = useState(initial.current.filters)
+  const [contextFilters, setContextFilters] = useState(initial.current.contextFilters)
   const [searchQuery, setSearchQuery] = useState(initial.current.search)
   const [loadedFingerprint, setLoadedFingerprint] = useState('')
   const [loadedAreaKm2, setLoadedAreaKm2] = useState(0)
@@ -240,13 +271,18 @@ export default function App() {
   const signalArea = loadedFingerprint ? loadedAreaKm2 : areaKm2
   const signal = useMemo(() => mappingSignal(items, signalArea), [items, signalArea])
   const layerFiltered = useMemo(() => items.filter((item) => filters[item.category]), [items, filters])
-  const filtered = useMemo(() => layerFiltered.filter((item) => matchesSearch(item, searchQuery)), [layerFiltered, searchQuery])
+  const contextFiltered = useMemo(
+    () => layerFiltered.filter((item) => matchesContextFilters(item, contextFilters)),
+    [layerFiltered, contextFilters],
+  )
+  const filtered = useMemo(() => contextFiltered.filter((item) => matchesSearch(item, searchQuery)), [contextFiltered, searchQuery])
   const recordAges = useMemo(() => ageSummary(filtered), [filtered])
   const detailStats = useMemo(() => metadataSummary(filtered), [filtered])
   const proximity = useMemo(() => proximityDiagnostics(filtered), [filtered])
   const selectedAge = useMemo(() => (selected ? recordAge(selected.timestamp) : null), [selected])
   const selectedDetail = useMemo(() => (selected ? metadataProfile(selected) : null), [selected])
   const selectedNeighbors = useMemo(() => (selected ? proximity.neighbors.get(selected.id) || [] : []), [proximity, selected])
+  const selectedContexts = useMemo(() => (selected ? contextEvidence(selected.tags || {}) : {}), [selected])
   const renderedEntries = useMemo(() => clusterRecords(filtered, view?.zoom ?? initial.current.zoom), [filtered, view?.zoom])
   const clusterCount = useMemo(() => renderedEntries.filter((entry) => entry.kind === 'cluster').length, [renderedEntries])
   const changeStatusById = comparison?.compatible ? comparison.statusById : null
@@ -257,6 +293,8 @@ export default function App() {
     items.forEach((item) => { counts[item.category] = (counts[item.category] || 0) + 1 })
     return counts
   }, [items])
+  const contextCounts = useMemo(() => contextSummary(items), [items])
+  const defaultMapFilters = Object.values(filters).every(Boolean) && !Object.values(contextFilters).some(Boolean)
 
   useEffect(() => {
     const onOnline = () => setOnline(true)
@@ -272,12 +310,14 @@ export default function App() {
   useEffect(() => {
     if (!view) return
     const activeLayers = Object.entries(filters).filter(([, enabled]) => enabled).map(([key]) => key).join(',')
+    const activeContexts = Object.entries(contextFilters).filter(([, enabled]) => enabled).map(([key]) => key).join(',')
     const params = new URLSearchParams()
     params.set('map', `${view.zoom}/${view.lat.toFixed(5)}/${view.lon.toFixed(5)}`)
     params.set('layers', activeLayers)
+    if (activeContexts) params.set('contexts', activeContexts)
     if (searchQuery.trim()) params.set('q', searchQuery.trim())
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${params.toString()}`)
-  }, [view, filters, searchQuery])
+  }, [view, filters, contextFilters, searchQuery])
 
   useEffect(() => {
     if (!utilityMessage) return
@@ -342,6 +382,11 @@ export default function App() {
 
   const requestScan = (force = false) => setRequest((current) => ({ id: current.id + 1, force }))
   const toggleFilter = (key) => setFilters((current) => ({ ...current, [key]: !current[key] }))
+  const toggleContext = (key) => setContextFilters((current) => ({ ...current, [key]: !current[key] }))
+  const resetMapFilters = () => {
+    setFilters(defaultFilters())
+    setContextFilters(defaultContextFilters())
+  }
 
   const copyViewLink = async () => {
     try {
@@ -358,9 +403,38 @@ export default function App() {
     }
   }
 
+  const shareView = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'PEEKABOO — See what sees you.',
+          text: 'Explore publicly mapped surveillance infrastructure with Peekaboo.',
+          url: window.location.href,
+        })
+        setUtilityMessage('SHARE SHEET OPENED')
+        return
+      } catch (error) {
+        if (error?.name === 'AbortError') return
+      }
+    }
+    await copyViewLink()
+  }
+
   const exportGeoJSON = () => {
     if (!filtered.length) return
-    downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}.geojson`, JSON.stringify(toGeoJSON(filtered), null, 2), 'application/geo+json')
+    const geoJSON = toGeoJSON(filtered)
+    geoJSON.features = geoJSON.features.map((feature, index) => {
+      const evidence = contextEvidence(filtered[index]?.tags || {})
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          contexts: Object.keys(evidence),
+          contextEvidence: evidence,
+        },
+      }
+    })
+    downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}.geojson`, JSON.stringify(geoJSON, null, 2), 'application/geo+json')
     setUtilityMessage(`EXPORTED ${filtered.length} GEOJSON RECORD${filtered.length === 1 ? '' : 'S'}`)
   }
 
@@ -374,6 +448,11 @@ export default function App() {
     const base = buildManifest(filtered, { ...queryInfo, loadedAreaKm2 })
     const manifest = {
       ...base,
+      contextLayers: {
+        counts: contextSummary(filtered),
+        activeFilters: Object.entries(contextFilters).filter(([, enabled]) => enabled).map(([key]) => key),
+        interpretation: 'Context layers are derived from explicit OSM tags on the surveillance record. Park/recreation is not inferred from proximity to a mapped park. Public-space context does not establish public ownership or operation.',
+      },
       diagnostics: diagnosticsManifest(filtered, { zoom: view?.zoom ?? null }),
       changeLedger: comparison?.compatible ? {
         scope: 'full loaded viewport before UI filters/search',
@@ -491,7 +570,7 @@ export default function App() {
             <div className="eyebrow">PUBLIC DATA / OPEN MAP</div>
             <h2>Mapped surveillance infrastructure</h2>
             <p>
-              Peekaboo visualizes surveillance objects voluntarily documented in OpenStreetMap. Vendor-specific layers, including Flock Safety, represent OSM claims rather than independent device verification.
+              Peekaboo visualizes surveillance objects voluntarily documented in OpenStreetMap. Vendor-specific and context layers represent OSM claims rather than independent physical verification.
             </p>
             <button className="load-button" onClick={() => requestScan(false)} disabled={loading || !bounds}>
               {scanLabel}
@@ -516,6 +595,29 @@ export default function App() {
             )}
           </section>
 
+          <section className="panel release-panel">
+            <div className="panel-heading"><span>WHAT'S NEW</span><span>v1.1</span></div>
+            <ul>
+              <li>On-map quick filter chips and compact legend.</li>
+              <li>Public-space and park/recreation OSM context layers.</li>
+              <li>Share-sheet support and richer social preview metadata.</li>
+              <li>Mobile control spacing and details-sheet polish.</li>
+              <li>Compact baseline-change summary when a comparison exists.</li>
+            </ul>
+          </section>
+
+          {comparison?.compatible && (
+            <section className="panel recent-changes-panel">
+              <div className="panel-heading"><span>RECENTLY CHANGED</span><span>SINCE BASELINE</span></div>
+              <div className="recent-change-grid">
+                <div className="added"><span>New</span><strong>{deltaSummary.added}</strong></div>
+                <div className="removed"><span>Removed</span><strong>{deltaSummary.removed}</strong></div>
+                <div className="changed"><span>Changed</span><strong>{deltaSummary.changed}</strong></div>
+              </div>
+              <p className="microcopy">This is a same-viewport OpenStreetMap record comparison, not proof that physical devices were installed, removed, or modified.</p>
+            </section>
+          )}
+
           <section className="panel">
             <div className="panel-heading">
               <span>VISIBLE LAYERS</span>
@@ -531,6 +633,20 @@ export default function App() {
                 </label>
               ))}
             </div>
+
+            <div className="context-filter-block">
+              <div className="context-filter-heading">CONTEXT LAYERS</div>
+              {Object.entries(CONTEXT_META).map(([key, meta]) => (
+                <label className="filter-row context-filter-row" key={key}>
+                  <input type="checkbox" checked={contextFilters[key]} onChange={() => toggleContext(key)} />
+                  <span className={`legend-dot context-${key}`}>{meta.glyph}</span>
+                  <span>{meta.label}</span>
+                  <strong>{contextCounts[key] || 0}</strong>
+                </label>
+              ))}
+              <p className="microcopy">Public-space context comes from explicit public/town/street surveillance tags and does not prove public ownership. Park/recreation requires explicit park/recreation tags on the surveillance record; Peekaboo does not infer it merely because a marker is near a park.</p>
+            </div>
+
             <label className="record-search">
               <span>SEARCH LOADED RECORDS</span>
               <input
@@ -632,6 +748,7 @@ export default function App() {
               <span>Query time</span><strong>{queryInfo ? `${queryInfo.durationMs} ms` : '—'}</strong>
             </div>
             <div className="tool-buttons four">
+              <button onClick={shareView}>SHARE VIEW</button>
               <button onClick={copyViewLink}>COPY VIEW LINK</button>
               <button onClick={exportGeoJSON} disabled={!filtered.length}>EXPORT GEOJSON</button>
               <button onClick={exportCSV} disabled={!filtered.length}>EXPORT CSV</button>
@@ -650,6 +767,16 @@ export default function App() {
             <MapBridge onView={handleView} onScan={runQuery} request={request} />
             <MapRecords entries={renderedEntries} selected={selected} onSelect={setSelected} changeStatusById={changeStatusById} />
           </MapContainer>
+
+          <div className="map-filter-chips" role="group" aria-label="Quick map filters">
+            <button type="button" className={defaultMapFilters ? 'active' : ''} aria-pressed={defaultMapFilters} onClick={resetMapFilters}>ALL</button>
+            <button type="button" className={filters.flock ? 'active flock-chip' : 'flock-chip'} aria-pressed={filters.flock} onClick={() => toggleFilter('flock')}>FLOCK <strong>{categoryCounts.flock || 0}</strong></button>
+            <button type="button" className={filters.alpr ? 'active alpr-chip' : 'alpr-chip'} aria-pressed={filters.alpr} onClick={() => toggleFilter('alpr')}>ALPR <strong>{categoryCounts.alpr || 0}</strong></button>
+            <button type="button" className={filters.camera ? 'active camera-chip' : 'camera-chip'} aria-pressed={filters.camera} onClick={() => toggleFilter('camera')}>CAMERAS <strong>{categoryCounts.camera || 0}</strong></button>
+            <button type="button" className={contextFilters.public ? 'active public-chip' : 'public-chip'} aria-pressed={contextFilters.public} onClick={() => toggleContext('public')}>PUBLIC SPACE <strong>{contextCounts.public || 0}</strong></button>
+            <button type="button" className={contextFilters.park ? 'active park-chip' : 'park-chip'} aria-pressed={contextFilters.park} onClick={() => toggleContext('park')}>PARKS <strong>{contextCounts.park || 0}</strong></button>
+          </div>
+
           <div className={`map-hud ${viewDirty ? 'warn' : !online ? 'warn' : ''}`}>
             <span className={loading ? 'pulse' : ''} />
             {loading
@@ -664,6 +791,14 @@ export default function App() {
                       ? 'SESSION CACHE • PUBLIC OSM'
                       : 'PUBLIC OSM DATA'}
           </div>
+
+          <div className="map-mini-legend" aria-label="Map marker legend">
+            <div><span className="legend-swatch flock">F</span><b>Flock</b></div>
+            <div><span className="legend-swatch camera">◉</span><b>Camera</b></div>
+            <div><span className="legend-swatch alpr">▣</span><b>ALPR</b></div>
+            <small>Marker = type • Public/Parks = OSM context filters</small>
+          </div>
+
           {comparison?.compatible && (
             <div className={`ledger-hud ${deltaSummary.totalDelta ? 'active' : ''}`}>
               {deltaSummary.totalDelta ? `CHANGE LEDGER • ${deltaSummary.totalDelta} OSM Δ` : 'BASELINE MATCH • 0 OSM Δ'}
@@ -686,6 +821,16 @@ export default function App() {
                   <p>Compared with the saved baseline for this viewport. This is a public-record comparison, not a physical-device status claim.</p>
                 </div>
               )}
+              {Object.entries(selectedContexts).map(([key, evidence]) => (
+                <div className={`context-note context-${key}`} key={key}>
+                  <strong>{CONTEXT_META[key]?.label.toUpperCase()} / OSM CONTEXT</strong>
+                  <span>{evidence.label}</span>
+                  <code>{evidence.basis}</code>
+                  <p>{key === 'public'
+                    ? 'This describes the monitored-area context in OSM. It does not prove public ownership, public operation, or current device status.'
+                    : 'This match comes from explicit park/recreation context on the surveillance record. Peekaboo does not infer park status from proximity alone.'}</p>
+                </div>
+              ))}
               {selected.vendorEvidence && (
                 <div className={`vendor-note ${selected.vendorEvidence.strength}`}>
                   <strong>VENDOR CLAIM / OSM</strong>
@@ -749,7 +894,7 @@ export default function App() {
       </main>
 
       <footer>
-        <span>PEEKABOO v0.6</span>
+        <span>PEEKABOO v1.1</span>
         <span>PUBLIC DATA • NO LIVE FEEDS • NO DEVICE DISCOVERY</span>
         <span>DATA © OPENSTREETMAP CONTRIBUTORS</span>
       </footer>
