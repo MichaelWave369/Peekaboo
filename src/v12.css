@@ -104,6 +104,11 @@
   font-weight: 900;
   letter-spacing: .09em;
 }
+.public-cam-live-dot.fallback {
+  border-color: #8a672c;
+  background: #211a0d;
+  color: #f0cf77 !important;
+}
 .public-cam-receipt {
   display: flex;
   flex-wrap: wrap;
@@ -118,6 +123,32 @@
   background: #090d12;
   color: #aab7bc;
 }
+.public-cam-stale-note,
+.public-cam-load-error {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #7d622d;
+  border-radius: 8px;
+  background: #211b0f;
+  color: #bcae8b;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.public-cam-stale-note strong,
+.public-cam-stale-note span,
+.public-cam-load-error strong,
+.public-cam-load-error span { display: block; }
+.public-cam-stale-note strong,
+.public-cam-load-error strong {
+  color: #f0cf77;
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+.public-cam-stale-note span { margin-top: 4px; color: #e8d8ae; font-weight: 800; }
+.public-cam-stale-note p { margin: 7px 0 0; }
+.public-cam-load-error { border-color: #7e4848; background: #211212; }
+.public-cam-load-error strong { color: #ff9e9e; }
+.public-cam-load-error span { margin-top: 5px; color: #c5a2a2; }
 .public-cam-load,
 .public-cam-media button,
 .public-cam-open {
@@ -172,6 +203,18 @@
   font-size: 8px;
   line-height: 1.45;
 }
+.public-cam-original-link {
+  margin-top: 9px;
+  padding: 8px 9px;
+  border: 1px solid #2d3940;
+  border-radius: 7px;
+  background: #0b1015;
+  color: #7f9199;
+  font-size: 8px;
+}
+.public-cam-original-link summary { cursor: pointer; color: #a8b6bb; font-weight: 800; }
+.public-cam-original-link code { display: block; margin-top: 7px; overflow-wrap: anywhere; color: #bba5f1; }
+.public-cam-original-link p { margin: 7px 0 0; }
 .public-cam-card > p {
   margin: 10px 0 0;
   color: #7f9199;
