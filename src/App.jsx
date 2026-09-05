@@ -235,7 +235,7 @@ export default function App() {
             <div className="eyebrow">PUBLIC DATA / OPEN MAP</div>
             <h2>Mapped surveillance infrastructure</h2>
             <p>
-              Peekaboo visualizes surveillance objects voluntarily documented in OpenStreetMap. It does not discover devices, access camera feeds, or imply that unmapped areas are camera-free.
+              Peekaboo visualizes surveillance objects voluntarily documented in OpenStreetMap. Vendor-specific layers, including Flock Safety, represent OSM claims rather than independent device verification.
             </p>
             <button className="load-button" onClick={() => requestScan(false)} disabled={loading || !bounds}>
               {scanLabel}
@@ -312,6 +312,8 @@ export default function App() {
                 <Popup>
                   <strong>{item.name}</strong><br />
                   {CATEGORY_META[item.category]?.label || 'Surveillance object'}<br />
+                  {item.manufacturer && <>Manufacturer: {item.manufacturer}<br /></>}
+                  {item.model && <>Model: {item.model}<br /></>}
                   Zone: {item.zone}
                 </Popup>
               </Marker>
@@ -330,8 +332,18 @@ export default function App() {
               <div className="eyebrow">OBJECT / {selected.osmType.toUpperCase()} {selected.osmId}</div>
               <h2>{selected.name}</h2>
               <div className={`category-pill ${selected.category}`}>{CATEGORY_META[selected.category]?.label}</div>
+              {selected.vendorEvidence && (
+                <div className={`vendor-note ${selected.vendorEvidence.strength}`}>
+                  <strong>VENDOR CLAIM / OSM</strong>
+                  <span>{selected.vendorEvidence.label}</span>
+                  <code>{selected.vendorEvidence.basis}</code>
+                  <p>This identifies the mapper's public vendor claim. Peekaboo does not independently verify the physical device.</p>
+                </div>
+              )}
               <div className="field-list">
                 <Field label="Observed zone" value={selected.zone} />
+                <Field label="Manufacturer" value={selected.manufacturer} />
+                <Field label="Model" value={selected.model} />
                 <Field label="Operator" value={selected.operator} />
                 <Field label="Camera type" value={selected.cameraType} />
                 <Field label="Direction" value={selected.direction} />
@@ -365,7 +377,7 @@ export default function App() {
       </main>
 
       <footer>
-        <span>PEEKABOO v0.2</span>
+        <span>PEEKABOO v0.3</span>
         <span>PUBLIC DATA • NO LIVE FEEDS • NO DEVICE DISCOVERY</span>
         <span>DATA © OPENSTREETMAP CONTRIBUTORS</span>
       </footer>
