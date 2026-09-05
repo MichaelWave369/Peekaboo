@@ -3,10 +3,14 @@ import ReactDOM from 'react-dom/client'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import './v04.css'
+import './robustness.css'
 import App from './App.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )
