@@ -3,12 +3,14 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.kumi.systems/api/interpreter',
 ]
 
-const CACHE_PREFIX = 'peekaboo:overpass:v2:'
+const CACHE_PREFIX = 'peekaboo:overpass:v3:'
 const CACHE_TTL_MS = 5 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 22 * 1000
 const MAX_RENDER_OBJECTS = 6000
+const FLOCK_WIKIDATA = 'Q108485435'
 
 export const CATEGORY_META = {
+  flock: { label: 'Flock Safety ALPR', glyph: 'F' },
   camera: { label: 'Camera', glyph: '◉' },
   alpr: { label: 'ALPR / plate reader', glyph: '▣' },
   guard: { label: 'Guard / watched area', glyph: '◆' },
@@ -16,10 +18,70 @@ export const CATEGORY_META = {
   other: { label: 'Other surveillance', glyph: '•' },
 }
 
+function normalized(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function isAlprLike(tags = {}) {
+  const raw = `${tags['surveillance:type'] || ''} ${tags.surveillance || ''} ${tags.camera || ''}`.toLowerCase()
+  const model = normalized(tags.model)
+  return raw.includes('alpr') || raw.includes('anpr') || raw.includes('plate') || model.includes('falcon')
+}
+
+export function flockEvidence(tags = {}) {
+  const manufacturer = normalized(tags.manufacturer)
+  const manufacturerWikidata = String(tags['manufacturer:wikidata'] || '').trim()
+  const brand = normalized(tags.brand)
+  const operator = normalized(tags.operator)
+  const model = normalized(tags.model)
+  const name = normalized(tags.name)
+
+  if (manufacturer.includes('flock safety') || manufacturer === 'flock' || manufacturerWikidata === FLOCK_WIKIDATA) {
+    return {
+      matched: true,
+      strength: 'explicit',
+      label: 'Explicit OSM manufacturer claim',
+      basis: manufacturerWikidata === FLOCK_WIKIDATA ? `manufacturer:wikidata=${FLOCK_WIKIDATA}` : `manufacturer=${tags.manufacturer}`,
+    }
+  }
+
+  if (brand.includes('flock safety') || brand === 'flock') {
+    return {
+      matched: true,
+      strength: 'legacy',
+      label: 'Legacy / alternate OSM brand claim',
+      basis: `brand=${tags.brand}`,
+    }
+  }
+
+  if (operator.includes('flock safety') || operator === 'flock') {
+    return {
+      matched: true,
+      strength: 'legacy',
+      label: 'Legacy / alternate OSM operator claim',
+      basis: `operator=${tags.operator}`,
+    }
+  }
+
+  if (model.includes('flock') || name.includes('flock falcon')) {
+    return {
+      matched: true,
+      strength: 'textual',
+      label: 'Textual OSM model/name claim',
+      basis: model.includes('flock') ? `model=${tags.model}` : `name=${tags.name}`,
+    }
+  }
+
+  return { matched: false, strength: null, label: null, basis: null }
+}
+
 export function classify(tags = {}) {
   const raw = `${tags['surveillance:type'] || ''} ${tags.surveillance || ''} ${tags.camera || ''}`.toLowerCase()
-  if (raw.includes('alpr') || raw.includes('anpr') || raw.includes('plate')) return 'alpr'
+  const flock = flockEvidence(tags)
+
   if (raw.includes('gunshot')) return 'gunshot_detector'
+  if (flock.matched && isAlprLike(tags)) return 'flock'
+  if (raw.includes('alpr') || raw.includes('anpr') || raw.includes('plate')) return 'alpr'
   if (raw.includes('guard')) return 'guard'
   if (raw.includes('camera') || tags['camera:type']) return 'camera'
   return 'other'
@@ -37,6 +99,11 @@ export function normalizeElement(element) {
   const point = pointFor(element)
   if (!point) return null
   const tags = element.tags || {}
+  const vendorEvidence = flockEvidence(tags)
+  const manufacturer = tags.manufacturer || (vendorEvidence.matched ? 'Flock Safety (OSM claim)' : null)
+  const model = tags.model || null
+  const descriptiveName = [manufacturer && !manufacturer.includes('(OSM claim)') ? manufacturer : null, model].filter(Boolean).join(' ')
+
   return {
     id: `${element.type}/${element.id}`,
     osmType: element.type,
@@ -45,9 +112,14 @@ export function normalizeElement(element) {
     lon: point[1],
     tags,
     category: classify(tags),
-    name: tags.name || tags.operator || 'Mapped surveillance object',
+    name: tags.name || descriptiveName || tags.operator || 'Mapped surveillance object',
     zone: tags['surveillance:zone'] || tags.zone || 'unspecified',
     operator: tags.operator || 'unknown',
+    manufacturer,
+    manufacturerWikidata: tags['manufacturer:wikidata'] || null,
+    model,
+    modelWikidata: tags['model:wikidata'] || null,
+    vendorEvidence: vendorEvidence.matched ? vendorEvidence : null,
     cameraType: tags['camera:type'] || 'unspecified',
     direction: tags['camera:direction'] || tags.direction || null,
     indoor: tags.indoor || null,
@@ -227,7 +299,7 @@ export function toGeoJSON(items) {
     properties: {
       generator: 'Peekaboo',
       generatedAt: new Date().toISOString(),
-      note: 'Public OpenStreetMap surveillance records. Absence of a record does not imply absence of surveillance.',
+      note: 'Public OpenStreetMap surveillance records. Vendor identity is an OSM claim, not independent verification. Absence of a record does not imply absence of surveillance.',
     },
     features: items.map((item) => ({
       type: 'Feature',
@@ -240,6 +312,11 @@ export function toGeoJSON(items) {
         name: item.name,
         zone: item.zone,
         operator: item.operator,
+        manufacturer: item.manufacturer,
+        manufacturerWikidata: item.manufacturerWikidata,
+        model: item.model,
+        modelWikidata: item.modelWikidata,
+        vendorEvidence: item.vendorEvidence,
         cameraType: item.cameraType,
         direction: item.direction,
         indoor: item.indoor,
