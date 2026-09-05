@@ -2,11 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import {
+  ageSummary,
   boundsAreaKm2,
   boundsFingerprint,
+  buildManifest,
   CATEGORY_META,
   fetchSurveillance,
   mappingSignal,
+  matchesSearch,
+  recordAge,
+  toCSV,
   toGeoJSON,
 } from './data.js'
 
@@ -19,12 +24,12 @@ function defaultFilters() {
 }
 
 function parseInitialState() {
-  const fallback = { center: START, zoom: START_ZOOM, filters: defaultFilters() }
+  const fallback = { center: START, zoom: START_ZOOM, filters: defaultFilters(), search: '' }
   try {
     const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     const map = params.get('map')
     const layers = params.get('layers')
-    const next = { ...fallback, filters: defaultFilters() }
+    const next = { ...fallback, filters: defaultFilters(), search: params.get('q') || '' }
 
     if (map) {
       const [zoomRaw, latRaw, lonRaw] = map.split('/')
@@ -106,6 +111,18 @@ function formatTimestamp(value) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
 }
 
+function downloadText(filename, content, type) {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 export default function App() {
   const initial = useRef(parseInitialState())
   const [items, setItems] = useState([])
@@ -117,6 +134,7 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [request, setRequest] = useState({ id: 0, force: false })
   const [filters, setFilters] = useState(initial.current.filters)
+  const [searchQuery, setSearchQuery] = useState(initial.current.search)
   const [loadedFingerprint, setLoadedFingerprint] = useState('')
   const [loadedAreaKm2, setLoadedAreaKm2] = useState(0)
   const [queryInfo, setQueryInfo] = useState(null)
@@ -128,7 +146,10 @@ export default function App() {
   const viewDirty = Boolean(loadedFingerprint && currentFingerprint && loadedFingerprint !== currentFingerprint)
   const signalArea = loadedFingerprint ? loadedAreaKm2 : areaKm2
   const signal = useMemo(() => mappingSignal(items, signalArea), [items, signalArea])
-  const filtered = useMemo(() => items.filter((item) => filters[item.category]), [items, filters])
+  const layerFiltered = useMemo(() => items.filter((item) => filters[item.category]), [items, filters])
+  const filtered = useMemo(() => layerFiltered.filter((item) => matchesSearch(item, searchQuery)), [layerFiltered, searchQuery])
+  const recordAges = useMemo(() => ageSummary(filtered), [filtered])
+  const selectedAge = useMemo(() => (selected ? recordAge(selected.timestamp) : null), [selected])
   const categoryCounts = useMemo(() => {
     const counts = Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, 0]))
     items.forEach((item) => { counts[item.category] = (counts[item.category] || 0) + 1 })
@@ -138,15 +159,22 @@ export default function App() {
   useEffect(() => {
     if (!view) return
     const activeLayers = Object.entries(filters).filter(([, enabled]) => enabled).map(([key]) => key).join(',')
-    const hash = `map=${view.zoom}/${view.lat.toFixed(5)}/${view.lon.toFixed(5)}&layers=${activeLayers}`
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${hash}`)
-  }, [view, filters])
+    const params = new URLSearchParams()
+    params.set('map', `${view.zoom}/${view.lat.toFixed(5)}/${view.lon.toFixed(5)}`)
+    params.set('layers', activeLayers)
+    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${params.toString()}`)
+  }, [view, filters, searchQuery])
 
   useEffect(() => {
     if (!utilityMessage) return
     const timer = setTimeout(() => setUtilityMessage(''), 2200)
     return () => clearTimeout(timer)
   }, [utilityMessage])
+
+  useEffect(() => {
+    if (selected && !filtered.some((item) => item.id === selected.id)) setSelected(null)
+  }, [filtered, selected])
 
   const runQuery = useCallback(async (nextBounds, force = false) => {
     const area = boundsAreaKm2(nextBounds)
@@ -202,16 +230,20 @@ export default function App() {
 
   const exportGeoJSON = () => {
     if (!filtered.length) return
-    const blob = new Blob([JSON.stringify(toGeoJSON(filtered), null, 2)], { type: 'application/geo+json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `peekaboo-${new Date().toISOString().slice(0, 10)}.geojson`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
-    setUtilityMessage(`EXPORTED ${filtered.length} OBJECT${filtered.length === 1 ? '' : 'S'}`)
+    downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}.geojson`, JSON.stringify(toGeoJSON(filtered), null, 2), 'application/geo+json')
+    setUtilityMessage(`EXPORTED ${filtered.length} GEOJSON RECORD${filtered.length === 1 ? '' : 'S'}`)
+  }
+
+  const exportCSV = () => {
+    if (!filtered.length) return
+    downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(filtered), 'text/csv;charset=utf-8')
+    setUtilityMessage(`EXPORTED ${filtered.length} CSV RECORD${filtered.length === 1 ? '' : 'S'}`)
+  }
+
+  const exportManifest = () => {
+    const manifest = buildManifest(filtered, { ...queryInfo, loadedAreaKm2 })
+    downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}-manifest.json`, JSON.stringify(manifest, null, 2), 'application/json')
+    setUtilityMessage('MANIFEST EXPORTED')
   }
 
   const scanLabel = loading ? 'QUERYING OPENSTREETMAP…' : viewDirty ? 'RESCAN CURRENT MAP' : 'SCAN CURRENT MAP'
@@ -267,6 +299,17 @@ export default function App() {
                 </label>
               ))}
             </div>
+            <label className="record-search">
+              <span>SEARCH LOADED RECORDS</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="operator, model, tag, zone…"
+                autoComplete="off"
+              />
+            </label>
+            {searchQuery && <div className="search-summary">{filtered.length} matching record{filtered.length === 1 ? '' : 's'}</div>}
           </section>
 
           <section className="panel signal-panel">
@@ -280,16 +323,30 @@ export default function App() {
             <p className="microcopy">These values are bound to the viewport that produced the loaded OSM records, not real-world surveillance completeness.</p>
           </section>
 
+          <section className="panel age-panel">
+            <div className="panel-heading"><span>OSM RECORD AGE</span><span>NOT DEVICE STATUS</span></div>
+            <div className="age-grid">
+              <div className="current"><span>&lt; 1 year</span><strong>{recordAges.current}</strong></div>
+              <div className="aging"><span>1–3 years</span><strong>{recordAges.aging}</strong></div>
+              <div className="stale"><span>3+ years</span><strong>{recordAges.stale}</strong></div>
+              <div className="unknown"><span>No date</span><strong>{recordAges.unknown}</strong></div>
+            </div>
+            <p className="microcopy">Age measures the last OSM edit timestamp. An old record may still describe a real device; a recent edit is not independent physical verification.</p>
+          </section>
+
           <section className="panel data-tools">
             <div className="panel-heading"><span>DATA TOOLS</span><span>PUBLIC RECORDS</span></div>
             <div className="source-grid">
               <span>Endpoint</span><strong>{endpointLabel(queryInfo?.endpoint)}</strong>
               <span>Fetch path</span><strong>{queryInfo?.cached ? 'SESSION CACHE' : queryInfo ? `${queryInfo.attempts} ENDPOINT${queryInfo.attempts === 1 ? '' : 'S'}` : '—'}</strong>
+              <span>Failover</span><strong>{queryInfo ? (queryInfo.failures?.length ? `${queryInfo.failures.length} FAILED BEFORE SUCCESS` : 'NONE') : '—'}</strong>
               <span>Query time</span><strong>{queryInfo ? `${queryInfo.durationMs} ms` : '—'}</strong>
             </div>
-            <div className="tool-buttons">
+            <div className="tool-buttons four">
               <button onClick={copyViewLink}>COPY VIEW LINK</button>
               <button onClick={exportGeoJSON} disabled={!filtered.length}>EXPORT GEOJSON</button>
+              <button onClick={exportCSV} disabled={!filtered.length}>EXPORT CSV</button>
+              <button onClick={exportManifest} disabled={!queryInfo}>EXPORT MANIFEST</button>
             </div>
             {utilityMessage && <div className="utility-message">{utilityMessage}</div>}
           </section>
@@ -314,7 +371,8 @@ export default function App() {
                   {CATEGORY_META[item.category]?.label || 'Surveillance object'}<br />
                   {item.manufacturer && <>Manufacturer: {item.manufacturer}<br /></>}
                   {item.model && <>Model: {item.model}<br /></>}
-                  Zone: {item.zone}
+                  Zone: {item.zone}<br />
+                  OSM record age: {recordAge(item.timestamp).label}
                 </Popup>
               </Marker>
             ))}
@@ -340,6 +398,11 @@ export default function App() {
                   <p>This identifies the mapper's public vendor claim. Peekaboo does not independently verify the physical device.</p>
                 </div>
               )}
+              <div className={`record-age-note ${selectedAge?.status || 'unknown'}`}>
+                <strong>OSM RECORD AGE</strong>
+                <span>{selectedAge?.label || 'UNKNOWN'}</span>
+                <p>Based on the source object's last edit timestamp. This does not establish whether the physical device is currently present or active.</p>
+              </div>
               <div className="field-list">
                 <Field label="Observed zone" value={selected.zone} />
                 <Field label="Manufacturer" value={selected.manufacturer} />
@@ -377,7 +440,7 @@ export default function App() {
       </main>
 
       <footer>
-        <span>PEEKABOO v0.3</span>
+        <span>PEEKABOO v0.4</span>
         <span>PUBLIC DATA • NO LIVE FEEDS • NO DEVICE DISCOVERY</span>
         <span>DATA © OPENSTREETMAP CONTRIBUTORS</span>
       </footer>
