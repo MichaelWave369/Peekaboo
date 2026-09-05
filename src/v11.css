@@ -1,0 +1,208 @@
+/* Peekaboo v1.1 public-use pass: quick filters, context layers, legend, release notes and mobile polish. */
+
+/* Leave a lane beneath the floating search bar for quick filters. */
+.sidebar { top: 124px; }
+
+.map-filter-chips {
+  position: absolute;
+  z-index: 710;
+  top: 76px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  gap: 7px;
+  max-width: max-content;
+  padding: 2px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+.map-filter-chips::-webkit-scrollbar { display: none; }
+.map-filter-chips button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid rgba(117, 130, 137, .3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .97);
+  color: #36434a;
+  box-shadow: 0 2px 9px rgba(0,0,0,.2);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.map-filter-chips button strong {
+  margin-left: 5px;
+  color: #738087;
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.map-filter-chips button:hover { background: #f5f7f7; }
+.map-filter-chips button.active {
+  border-color: #789e2e;
+  background: #edf5df;
+  color: #425e12;
+}
+.map-filter-chips button.active strong { color: #57721f; }
+.map-filter-chips .flock-chip.active { border-color: #d75d53; background: #fff0ee; color: #a63e37; }
+.map-filter-chips .alpr-chip.active { border-color: #3ca6d0; background: #eef9fd; color: #226d8c; }
+.map-filter-chips .public-chip.active { border-color: #4e82d0; background: #edf4ff; color: #285caa; }
+.map-filter-chips .park-chip.active { border-color: #4c9151; background: #eef8ef; color: #2e7334; }
+
+.map-mini-legend {
+  position: absolute;
+  z-index: 640;
+  left: 16px;
+  bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  align-items: center;
+  gap: 7px 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(90, 103, 110, .2);
+  border-radius: 11px;
+  background: rgba(255,255,255,.94);
+  color: #344047;
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.map-mini-legend > div { display: flex; align-items: center; gap: 5px; font-size: 8px; }
+.map-mini-legend b { font-weight: 750; }
+.map-mini-legend small { grid-column: 1 / -1; color: #748087; font-size: 7px; }
+.legend-swatch {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: #182026;
+  font-size: 8px;
+  font-weight: 900;
+}
+.legend-swatch.flock { color: #ff6b5f; }
+.legend-swatch.camera { color: #9abd50; }
+.legend-swatch.alpr { color: #45b9e8; }
+
+.release-panel ul {
+  margin: 0;
+  padding-left: 17px;
+  color: #a1b0b6;
+  font-size: 10px;
+  line-height: 1.55;
+}
+.release-panel li + li { margin-top: 4px; }
+.release-panel .panel-heading span:last-child { color: #c7f56b; }
+
+.context-filter-block {
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid #26343b;
+}
+.context-filter-heading {
+  margin-bottom: 8px;
+  color: #6f858e;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .14em;
+}
+.context-filter-row { margin-top: 6px; }
+.context-public { color: #78aaff; }
+.context-park { color: #76c77d; }
+
+.context-note {
+  margin: -6px 0 18px;
+  padding: 11px;
+  border: 1px solid #345b78;
+  background: #101923;
+  color: #aebdc3;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.context-note strong,
+.context-note span,
+.context-note code { display: block; }
+.context-note strong { color: #8ab8ff; font-size: 8px; letter-spacing: .14em; }
+.context-note span { margin-top: 5px; color: #dce8f7; font-weight: 750; }
+.context-note code {
+  margin-top: 5px;
+  padding: 5px 6px;
+  background: #090d12;
+  color: #aebdc3;
+  overflow-wrap: anywhere;
+}
+.context-note p { margin: 8px 0 0; color: #82939a; }
+.context-note.context-park { border-color: #426d45; background: #111b13; }
+.context-note.context-park strong { color: #83d68a; }
+
+.recent-change-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.recent-change-grid > div {
+  padding: 8px;
+  border: 1px solid #26343b;
+  border-radius: 8px;
+  background: #0b1117;
+}
+.recent-change-grid span { display: block; color: #71858d; font-size: 7px; text-transform: uppercase; letter-spacing: .08em; }
+.recent-change-grid strong { display: block; margin-top: 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.recent-change-grid .added strong { color: #78d7ff; }
+.recent-change-grid .removed strong { color: #ff8ea1; }
+.recent-change-grid .changed strong { color: #ead48b; }
+
+/* Five data buttons now fit without pretending five is divisible by two. */
+.tool-buttons.four > button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* More comfortable map touch targets. */
+@media (pointer: coarse) {
+  .map-filter-chips button { min-height: 42px; padding-inline: 15px; }
+  .v1-menu-button { min-width: 46px; min-height: 46px; }
+  .sidebar .load-button,
+  .sidebar .secondary-button,
+  .sidebar .tool-buttons button,
+  .sidebar .ledger-actions button,
+  .sidebar .ledger-file-button { min-height: 42px; }
+}
+
+@media (max-width: 900px) {
+  .map-filter-chips {
+    top: 64px;
+    left: 10px;
+    right: 10px;
+    max-width: calc(100% - 20px);
+  }
+  .sidebar { top: 112px; }
+  .map-hud { top: 112px; }
+  .ledger-hud { top: 150px; }
+  .map-mini-legend { left: 10px; bottom: 10px; }
+}
+
+@media (max-width: 560px) {
+  .map-filter-chips { gap: 5px; }
+  .map-filter-chips button { min-height: 38px; padding: 0 11px; font-size: 8px; }
+  .map-filter-chips button strong { font-size: 7px; }
+  .sidebar {
+    top: 108px;
+    width: calc(100% - 20px);
+    padding: 6px;
+  }
+  .sidebar .panel { padding: 12px 9px; }
+  .detail-drawer {
+    max-height: 64vh;
+    padding: 18px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  .map-mini-legend {
+    grid-template-columns: repeat(3, auto);
+    gap: 5px 7px;
+    padding: 7px 9px;
+  }
+  .map-mini-legend small { max-width: 220px; }
+  .recent-change-grid > div { padding: 7px 6px; }
+}
