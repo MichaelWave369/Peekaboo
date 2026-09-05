@@ -35,15 +35,32 @@ test('park-looking free text alone does not fabricate park context', () => {
   assert.equal(result.park, undefined)
 })
 
+test('contact:webcam creates explicit public-live-cam context', () => {
+  const result = contextEvidence({ 'contact:webcam': 'https://cams.example.org/live.jpg' })
+  assert.equal(result.webcam.strength, 'explicit')
+  assert.match(result.webcam.basis, /^contact:webcam=/)
+})
+
+test('weather context requires a valid public webcam before using descriptive hints', () => {
+  assert.equal(contextEvidence({ name: 'Mountain weather conditions' }).weather, undefined)
+  const result = contextEvidence({
+    'contact:webcam': 'https://cams.example.org/mountain.jpg',
+    name: 'Mountain Weather Conditions',
+  })
+  assert.equal(result.weather.strength, 'textual')
+})
+
 test('context filters use OR semantics across active contexts', () => {
   const publicItem = { tags: { surveillance: 'public' } }
   const parkItem = { tags: { 'surveillance:zone': 'park' } }
+  const webcamItem = { tags: { 'contact:webcam': 'https://cams.example.org/live.jpg' } }
   const privateItem = { tags: { surveillance: 'outdoor', 'surveillance:zone': 'entrance' } }
 
-  assert.equal(matchesContextFilters(publicItem, { public: true, park: true }), true)
-  assert.equal(matchesContextFilters(parkItem, { public: true, park: true }), true)
-  assert.equal(matchesContextFilters(privateItem, { public: true, park: true }), false)
-  assert.equal(matchesContextFilters(privateItem, { public: false, park: false }), true)
+  assert.equal(matchesContextFilters(publicItem, { public: true, park: true, webcam: false, weather: false }), true)
+  assert.equal(matchesContextFilters(parkItem, { public: true, park: true, webcam: false, weather: false }), true)
+  assert.equal(matchesContextFilters(webcamItem, { public: false, park: false, webcam: true, weather: false }), true)
+  assert.equal(matchesContextFilters(privateItem, { public: true, park: true, webcam: false, weather: false }), false)
+  assert.equal(matchesContextFilters(privateItem, { public: false, park: false, webcam: false, weather: false }), true)
   assert.equal(hasContext(publicItem, 'public'), true)
 })
 
@@ -52,6 +69,7 @@ test('context summary counts overlapping evidence independently', () => {
     { tags: { surveillance: 'public' } },
     { tags: { 'surveillance:zone': 'park' } },
     { tags: { surveillance: 'public', leisure: 'park' } },
+    { tags: { 'contact:webcam': 'https://cams.example.org/weather.jpg', name: 'Weather Conditions' } },
   ]
-  assert.deepEqual(contextSummary(items), { public: 2, park: 2 })
+  assert.deepEqual(contextSummary(items), { webcam: 1, weather: 1, public: 2, park: 2 })
 })
