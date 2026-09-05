@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PublicCamViewer from './PublicCamViewer.jsx'
 
@@ -18,17 +18,21 @@ function toggleRow(label) {
   contextRow(label)?.querySelector('input[type="checkbox"]')?.click()
 }
 
+function setTextIfChanged(node, value) {
+  if (node && node.textContent !== value) node.textContent = value
+}
+
 function stampRelease() {
   const footer = document.querySelector('footer')
   if (footer) {
     const spans = footer.querySelectorAll('span')
-    if (spans[0]) spans[0].textContent = 'PEEKABOO v1.2'
-    if (spans[1]) spans[1].textContent = 'PUBLIC FEEDS ONLY • NO DEVICE DISCOVERY • NO STREAM PROBING'
+    setTextIfChanged(spans[0], 'PEEKABOO v1.2')
+    setTextIfChanged(spans[1], 'PUBLIC FEEDS ONLY • NO DEVICE DISCOVERY • NO STREAM PROBING')
   }
 
   const release = document.querySelector('.release-panel')
   const version = release?.querySelector('.panel-heading span:last-child')
-  if (version) version.textContent = 'v1.2'
+  setTextIfChanged(version, 'v1.2')
   const list = release?.querySelector('ul')
   if (list && !list.querySelector('[data-v12-live-cams]')) {
     const item = document.createElement('li')
@@ -45,14 +49,22 @@ function QuickCamFilters() {
   }))
 
   useEffect(() => {
-    const sync = () => setState({
-      live: readRowState('Public live cam'),
-      weather: readRowState('Weather / conditions cam'),
+    const sync = () => setState((current) => {
+      const next = {
+        live: readRowState('Public live cam'),
+        weather: readRowState('Weather / conditions cam'),
+      }
+      if (
+        current.live.checked === next.live.checked &&
+        current.live.count === next.live.count &&
+        current.weather.checked === next.weather.checked &&
+        current.weather.count === next.weather.count
+      ) return current
+      return next
     })
     sync()
-    const observer = new MutationObserver(sync)
-    observer.observe(document.querySelector('.sidebar') || document.body, { childList: true, subtree: true, attributes: true })
-    return () => observer.disconnect()
+    const timer = setInterval(sync, 500)
+    return () => clearInterval(timer)
   }, [])
 
   return (
@@ -61,7 +73,7 @@ function QuickCamFilters() {
         type="button"
         className={state.live.checked ? 'active live-cam-chip' : 'live-cam-chip'}
         aria-pressed={state.live.checked}
-        onClick={() => toggleRow('Public live cam')}
+        onClick={() => { toggleRow('Public live cam'); setTimeout(() => setState({ live: readRowState('Public live cam'), weather: readRowState('Weather / conditions cam') }), 0) }}
       >
         LIVE CAMS <strong>{state.live.count}</strong>
       </button>
@@ -69,7 +81,7 @@ function QuickCamFilters() {
         type="button"
         className={state.weather.checked ? 'active weather-cam-chip' : 'weather-cam-chip'}
         aria-pressed={state.weather.checked}
-        onClick={() => toggleRow('Weather / conditions cam')}
+        onClick={() => { toggleRow('Weather / conditions cam'); setTimeout(() => setState({ live: readRowState('Public live cam'), weather: readRowState('Weather / conditions cam') }), 0) }}
       >
         WEATHER <strong>{state.weather.count}</strong>
       </button>
@@ -81,6 +93,7 @@ export default function PublicCamEnhancer() {
   const [chipHost, setChipHost] = useState(null)
   const [viewerHost, setViewerHost] = useState(null)
   const [tags, setTags] = useState(null)
+  const rawTextRef = useRef('')
 
   useEffect(() => {
     let chip = null
@@ -98,20 +111,23 @@ export default function PublicCamEnhancer() {
           chip.className = 'public-cam-chip-host'
           chips.appendChild(chip)
         }
-        setChipHost(chip)
+        setChipHost((current) => current === chip ? current : chip)
       }
 
       const drawer = document.querySelector('.detail-drawer.open')
       const raw = drawer?.querySelector('.raw-tags pre')
       if (!drawer || !raw) {
+        rawTextRef.current = ''
         setViewerHost(null)
         setTags(null)
         return
       }
 
-      let parsed = null
-      try { parsed = JSON.parse(raw.textContent || '{}') } catch { parsed = null }
-      setTags(parsed)
+      const rawText = raw.textContent || '{}'
+      if (rawText !== rawTextRef.current) {
+        rawTextRef.current = rawText
+        try { setTags(JSON.parse(rawText)) } catch { setTags(null) }
+      }
 
       viewer = drawer.querySelector('#peekaboo-public-cam-viewer-host')
       if (!viewer) {
@@ -121,12 +137,12 @@ export default function PublicCamEnhancer() {
         if (before) drawer.insertBefore(viewer, before)
         else drawer.appendChild(viewer)
       }
-      setViewerHost(viewer)
+      setViewerHost((current) => current === viewer ? current : viewer)
     }
 
     attach()
     const observer = new MutationObserver(attach)
-    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, attributes: true })
+    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true })
 
     return () => {
       observer.disconnect()
