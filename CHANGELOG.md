@@ -1,5 +1,15 @@
 # Peekaboo changelog
 
+## 1.2.1
+
+Live-cam filtering and stale-viewport clarity fix.
+
+- **LIVE CAMS** and **WEATHER** quick chips now act as complete presets instead of inheriting an accidentally empty base-category selection.
+- Activating either preset restores all base surveillance categories, clears competing context filters, and enables only the requested webcam context.
+- When the map has moved since the last scan, webcam quick chips show **RESCAN** instead of presenting previous-viewport counts as though they belong to the current map.
+- Added a dedicated webcam-context warning with **RESCAN CURRENT MAP** when an active webcam filter is looking at stale loaded data.
+- Preserved the previous loaded dataset until a new scan succeeds; the UI now makes that provenance boundary explicit instead of silently hiding it.
+
 ## 1.2.0
 
 Public webcam viewing with explicit feed provenance.
