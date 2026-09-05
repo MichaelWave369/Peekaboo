@@ -62,18 +62,18 @@ function stampRelease() {
   const footer = document.querySelector('footer')
   if (footer) {
     const spans = footer.querySelectorAll('span')
-    setTextIfChanged(spans[0], 'PEEKABOO v1.2.1')
-    setTextIfChanged(spans[1], 'PUBLIC FEEDS ONLY • NO DEVICE DISCOVERY • NO STREAM PROBING')
+    setTextIfChanged(spans[0], 'PEEKABOO v1.2.2')
+    setTextIfChanged(spans[1], 'PUBLIC LINKS ONLY • NO DEVICE DISCOVERY • NO STREAM PROBING')
   }
 
   const release = document.querySelector('.release-panel')
   const version = release?.querySelector('.panel-heading span:last-child')
-  setTextIfChanged(version, 'v1.2.1')
+  setTextIfChanged(version, 'v1.2.2')
   const list = release?.querySelector('ul')
-  if (list && !list.querySelector('[data-v121-cam-ux]')) {
+  if (list && !list.querySelector('[data-v122-stale-cams]')) {
     const item = document.createElement('li')
-    item.dataset.v121CamUx = 'true'
-    item.textContent = 'Live Cam / Weather quick filters now act as complete presets and stale viewport counts explicitly require a rescan.'
+    item.dataset.v122StaleCams = 'true'
+    item.textContent = 'Public webcam links now distinguish OSM-published URLs from reachability and use official provider fallbacks for known stale routes such as Nevada 511.'
     list.prepend(item)
   }
 }
@@ -148,7 +148,7 @@ function CamRescanNotice() {
   return (
     <div className="cam-rescan-notice" role="status">
       <strong>LIVE CAM RESULTS ARE FROM THE PREVIOUS SCAN</strong>
-      <span>Rescan this viewport before using those counts as Reno results.</span>
+      <span>Rescan this viewport before using those counts as current-area results.</span>
       <button type="button" onClick={requestCurrentMapScan}>RESCAN CURRENT MAP</button>
     </div>
   )
