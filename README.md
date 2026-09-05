@@ -12,20 +12,31 @@ Peekaboo is a public-data map for exploring surveillance infrastructure voluntar
 
 - A transparency and civic-tech visualization tool.
 - A client-side OpenStreetMap / Overpass explorer.
-- A way to inspect public metadata such as surveillance type, observed zone, operator, camera type, direction and OSM source provenance when those fields exist.
+- A way to inspect public metadata such as surveillance type, observed zone, operator, manufacturer, model, camera type, direction and OSM source provenance when those fields exist.
 - A deliberately honest view of **mapped data**, not a claim about real-world surveillance completeness.
 
 ## What Peekaboo is not
 
 Peekaboo does **not** discover cameras, probe devices, access live feeds, identify surveillance blind spots, or claim that an unmapped area has no surveillance. It only visualizes data already published in OpenStreetMap.
 
-## v0.2 features
+## v0.3 features
+
+### Flock Safety ALPR layer
+
+Peekaboo now treats mapped Flock Safety ALPR devices as a first-class category while preserving the provenance of the vendor claim.
+
+- Strong Flock matches use `manufacturer=Flock Safety` or `manufacturer:wikidata=Q108485435`.
+- Older or alternate `brand=Flock Safety` / `operator=Flock Safety` records can still be recognized, but are labeled as legacy/alternate evidence in the inspector.
+- Falcon model text can support the ALPR classification when vendor evidence is present.
+- Flock Raven gunshot detectors remain in the gunshot-detector category instead of being mislabeled as ALPR cameras.
+- Manufacturer, model, evidence strength and the exact source tag are displayed in the detail inspector.
+- Vendor identity is always presented as an **OpenStreetMap claim**, not independent physical-device verification.
 
 ### Map and inspection
 
 - Interactive Leaflet/OpenStreetMap map.
 - Live Overpass query for the current viewport.
-- Categories for cameras, ALPR/plate readers, guards, gunshot detectors and other surveillance objects.
+- Categories for Flock Safety ALPRs, cameras, generic ALPR/plate readers, guards, gunshot detectors and other surveillance objects.
 - Layer filters with per-category counts.
 - Public OSM metadata inspector with direct source-object and changeset links.
 - OSM record version and update timestamp when available.
@@ -40,13 +51,16 @@ Peekaboo does **not** discover cameras, probe devices, access live feeds, identi
 - Five-minute session cache to reduce repeat load on public Overpass infrastructure.
 - Explicit force-refresh control for a fresh network query.
 - Source endpoint, query path and query duration shown in the interface.
+- Overpass `remark` responses are treated as failures rather than silently accepted as empty/partial data.
+- Browser rendering is bounded for unexpectedly large result sets.
 
 ### Reproducibility and data tools
 
 - URL hash permalinks preserve map center, zoom and visible layers.
 - One-click copyable view links.
 - GeoJSON export of the currently visible loaded categories.
-- Export metadata explicitly states that missing OSM records do not imply absence of surveillance.
+- GeoJSON includes manufacturer/model/vendor-evidence fields when available.
+- Export metadata explicitly states that vendor identity is an OSM claim and missing OSM records do not imply absence of surveillance.
 
 ### Guardrails
 
@@ -62,9 +76,10 @@ npm install
 npm run dev
 ```
 
-Production build:
+Tests and production build:
 
 ```bash
+npm test
 npm run build
 npm run preview
 ```
@@ -84,8 +99,9 @@ OpenStreetMap contributors
         ▼
   tag normalization
         │
+        ├── Flock Safety ALPR
         ├── camera
-        ├── ALPR / ANPR
+        ├── generic ALPR / ANPR
         ├── guard
         ├── gunshot detector
         └── other surveillance
@@ -95,6 +111,18 @@ OpenStreetMap contributors
 ```
 
 The Overpass query includes objects with either `man_made=surveillance` or a `surveillance:type=*` tag and requests metadata plus centers for mapped ways/relations.
+
+## Flock identification policy
+
+Peekaboo deliberately separates three claims that are often blurred together:
+
+1. A mapped surveillance object exists in OSM.
+2. Its tags indicate ALPR/ANPR behavior or a Falcon model.
+3. Its tags attribute the device to Flock Safety.
+
+Only records that satisfy both the Flock-vendor claim and the ALPR/Falcon condition enter the dedicated **Flock Safety ALPR** layer. A Flock manufacturer tag by itself is not enough to label an arbitrary surveillance device as an ALPR.
+
+OSM data can be incomplete, outdated, disputed or incorrectly tagged. Peekaboo therefore exposes the original object, changeset and raw tags so users can inspect the evidence rather than treating the rendered marker as an independently verified fact.
 
 ## Mapping signal
 
