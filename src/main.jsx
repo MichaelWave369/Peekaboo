@@ -8,8 +8,10 @@ import './ledger.css'
 import './v07.css'
 import './v10.css'
 import './v11.css'
+import './v12.css'
 import App from './App.jsx'
 import AddressSearchPortal from './AddressSearchPortal.jsx'
+import PublicCamEnhancer from './PublicCamEnhancer.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -17,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <App />
       <AddressSearchPortal />
+      <PublicCamEnhancer />
     </ErrorBoundary>
   </React.StrictMode>,
 )
