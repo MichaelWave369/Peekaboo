@@ -1,0 +1,368 @@
+/* Peekaboo v1.0 map-first interface.
+   Familiar consumer-map interaction patterns, Peekaboo identity and evidence semantics. */
+
+html, body, #root { height: 100%; }
+body { overflow: hidden; background: #0b0e12; }
+
+.app-shell {
+  height: 100dvh;
+  min-height: 0;
+  grid-template-rows: 58px minmax(0, 1fr) 24px;
+  overflow: hidden;
+  background: #0b0e12;
+}
+
+.topbar {
+  min-height: 58px;
+  padding: 0 18px;
+  gap: 16px;
+  border-bottom: 1px solid rgba(76, 94, 104, .45);
+  background: rgba(11, 14, 18, .97);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .2);
+}
+.brand-lockup { gap: 11px; }
+.brand-lockup h1 { font-size: 21px; letter-spacing: .2em; }
+.brand-lockup p { margin-top: 4px; font-size: 8px; color: #7d8d94; }
+.tagline { font-size: 9px; letter-spacing: .16em; }
+.eye-logo { width: 37px; height: 25px; }
+.eye-logo span { width: 10px; height: 10px; border-width: 2px; }
+
+.workspace {
+  position: relative;
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.map-stage {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+}
+.map-root { position: absolute !important; inset: 0; }
+
+/* Let the map read like a normal map again instead of a night-vision terminal. */
+.leaflet-tile-pane { filter: saturate(.82) brightness(.96) contrast(.97); }
+
+/* Familiar floating map controls. */
+.leaflet-top.leaflet-left {
+  top: auto !important;
+  left: auto !important;
+  right: 16px !important;
+  bottom: 76px !important;
+}
+.leaflet-bar {
+  border: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .28) !important;
+}
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  width: 38px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #e3e6e8 !important;
+  background: #fff !important;
+  color: #263238 !important;
+}
+.leaflet-bar a:last-child { border-bottom: 0 !important; }
+.leaflet-control-attribution {
+  border-radius: 6px 0 0 0;
+  background: rgba(255, 255, 255, .88) !important;
+  color: #58656b !important;
+}
+.leaflet-control-attribution a { color: #347a36 !important; }
+
+/* Map-first address search, intentionally familiar but not a Google clone. */
+#peekaboo-address-search-host {
+  position: absolute;
+  z-index: 720;
+  top: 16px;
+  left: 16px;
+  width: min(560px, calc(100% - 32px));
+  pointer-events: none;
+}
+.v1-map-searchbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  pointer-events: none;
+}
+.v1-map-searchbar > * { pointer-events: auto; }
+.v1-menu-button {
+  flex: 0 0 50px;
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .26);
+  cursor: pointer;
+}
+.v1-menu-button span {
+  display: block;
+  width: 19px;
+  height: 2px;
+  border-radius: 999px;
+  background: #263238;
+}
+.v1-menu-button:hover span { background: #6f9f21; }
+.v1-menu-button:focus-visible { outline-color: #9ccc45; }
+
+.v1-map-searchbar .address-search-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.v1-map-searchbar .address-search-panel > .panel-heading,
+.v1-map-searchbar .address-search-panel > .microcopy { display: none; }
+.v1-map-searchbar .address-search-form {
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .26);
+}
+.v1-map-searchbar .address-search-form input {
+  min-height: 50px;
+  padding: 0 16px;
+  border: 0;
+  background: #fff;
+  color: #1f292e;
+  font-size: 14px;
+}
+.v1-map-searchbar .address-search-form input::placeholder { color: #758087; }
+.v1-map-searchbar .address-search-form input:focus { outline: 0; border: 0; }
+.v1-map-searchbar .address-search-form button {
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid #e5e8ea;
+  background: #fff;
+  color: #557b17;
+  font-size: 9px;
+}
+.v1-map-searchbar .address-search-form button:hover:not(:disabled) {
+  background: #f3f7ec;
+  color: #37530e;
+}
+.v1-map-searchbar .address-search-status {
+  width: calc(100% - 4px);
+  margin: 6px 2px 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  color: #5d676c;
+  font-size: 9px;
+}
+.v1-map-searchbar .address-results {
+  max-height: min(340px, 48vh);
+  margin-top: 6px;
+  padding: 6px;
+  gap: 2px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(0,0,0,.28);
+}
+.v1-map-searchbar .address-result {
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: #28343a;
+}
+.v1-map-searchbar .address-result:hover,
+.v1-map-searchbar .address-result:focus-visible {
+  border: 0;
+  background: #f1f4f5;
+  color: #162126;
+}
+.v1-map-searchbar .address-result strong { font-size: 11px; }
+.v1-map-searchbar .address-result span { color: #78858b; }
+
+/* Floating explore/data sheet. */
+.sidebar {
+  position: absolute !important;
+  z-index: 650;
+  top: 80px;
+  bottom: 16px;
+  left: 16px;
+  width: 340px;
+  height: auto !important;
+  max-height: none;
+  padding: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(85, 103, 113, .5);
+  border-radius: 14px;
+  background: rgba(13, 18, 24, .96);
+  box-shadow: 0 6px 24px rgba(0,0,0,.34);
+  backdrop-filter: blur(14px);
+  transform: translateX(calc(-100% - 28px));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .2s ease, opacity .18s ease;
+}
+.peekaboo-sidebar-open .sidebar {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.sidebar .panel {
+  margin: 0;
+  padding: 14px 10px;
+  border: 0;
+  border-bottom: 1px solid #26343b;
+  background: transparent;
+}
+.sidebar .panel:last-child { border-bottom: 0; }
+.sidebar .intro-panel h2 { font-size: 18px; }
+.sidebar .intro-panel p { font-size: 11px; }
+.sidebar .load-button,
+.sidebar .secondary-button,
+.sidebar .tool-buttons button,
+.sidebar .ledger-actions button,
+.sidebar .ledger-file-button {
+  border-radius: 8px;
+}
+.sidebar .load-button { min-height: 40px; }
+.sidebar .metric-grid > div,
+.sidebar .age-grid > div,
+.sidebar .ledger-grid > div,
+.sidebar .source-grid,
+.sidebar .ledger-baseline,
+.sidebar .render-status,
+.sidebar .record-search input {
+  border-radius: 8px;
+}
+
+/* Object details are a card on top of the map, not a permanent map tax. */
+.detail-drawer {
+  position: absolute !important;
+  z-index: 680;
+  top: 80px;
+  right: 16px;
+  bottom: 16px;
+  width: min(380px, calc(100% - 32px));
+  height: auto !important;
+  padding: 22px;
+  overflow-y: auto;
+  border: 1px solid rgba(85, 103, 113, .5);
+  border-radius: 14px;
+  background: rgba(13, 18, 24, .97);
+  box-shadow: 0 6px 26px rgba(0,0,0,.38);
+  backdrop-filter: blur(14px);
+  transform: translateX(calc(100% + 30px));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .2s ease, opacity .18s ease;
+}
+.detail-drawer.open {
+  transform: translateX(0) !important;
+  opacity: 1;
+  pointer-events: auto;
+}
+.detail-drawer:not(.open) { visibility: hidden; }
+.detail-drawer h2 { font-size: 21px; }
+.close-button { border-radius: 50%; background: #111820; }
+
+/* Status chips stay out of the search path. */
+.map-hud {
+  top: 16px;
+  left: auto;
+  right: 16px;
+  transform: none;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(12, 17, 22, .9);
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+}
+.ledger-hud {
+  top: 54px;
+  right: 16px;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+}
+
+/* Cleaner, familiar map markers. */
+.map-marker {
+  border-width: 2px;
+  background: rgba(12, 17, 22, .96);
+  box-shadow: 0 2px 8px rgba(0,0,0,.38), 0 0 0 2px rgba(255,255,255,.75);
+}
+.map-marker:hover,
+.map-marker.selected {
+  transform: scale(1.16);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45), 0 0 0 3px rgba(199,245,107,.35);
+}
+.map-cluster {
+  border: 3px solid #fff;
+  background: #739f25;
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(0,0,0,.38);
+}
+
+footer {
+  min-height: 24px;
+  padding: 0 12px;
+  border-top-color: #25323a;
+  background: #0b0e12;
+  font-size: 7px;
+}
+
+@media (max-width: 900px) {
+  .brand-lockup p { display: none; }
+  .tagline { display: none; }
+  #peekaboo-address-search-host { top: 10px; left: 10px; width: calc(100% - 20px); }
+  .v1-menu-button { flex-basis: 46px; width: 46px; height: 46px; border-radius: 10px; }
+  .v1-map-searchbar .address-search-form { min-height: 46px; grid-template-columns: minmax(0, 1fr) 64px; }
+  .v1-map-searchbar .address-search-form input { min-height: 46px; font-size: 13px; }
+  .sidebar {
+    top: 68px;
+    left: 10px;
+    bottom: 10px;
+    width: min(350px, calc(100% - 20px));
+    border-radius: 12px;
+  }
+  .detail-drawer {
+    top: auto;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-height: 58vh;
+    border-radius: 16px;
+    transform: translateY(calc(100% + 24px));
+  }
+  .detail-drawer.open { transform: translateY(0) !important; }
+  .map-hud { top: 64px; right: 10px; max-width: calc(100% - 20px); }
+  .ledger-hud { top: 102px; right: 10px; }
+  .leaflet-top.leaflet-left { right: 10px !important; bottom: 64px !important; }
+}
+
+@media (max-width: 560px) {
+  .app-shell { grid-template-rows: 52px minmax(0, 1fr) 22px; }
+  .topbar { min-height: 52px; padding: 0 12px; }
+  .brand-lockup h1 { font-size: 18px; }
+  .eye-logo { width: 32px; height: 22px; }
+  .v1-map-searchbar { gap: 7px; }
+  .v1-map-searchbar .address-search-form { grid-template-columns: minmax(0, 1fr) 58px; }
+  .v1-map-searchbar .address-search-form button { font-size: 8px; }
+  footer span:nth-child(2) { display: none; }
+}
