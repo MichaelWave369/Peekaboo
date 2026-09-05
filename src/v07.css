@@ -1,0 +1,114 @@
+/* Peekaboo v0.7 UI hardening: bound the desktop shell so side panels own their scroll. */
+@media (min-width: 721px) {
+  html, body, #root { height: 100%; }
+  .app-shell {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .workspace {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .sidebar,
+  .detail-drawer {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #4d616a #0b1016;
+}
+
+.sidebar::-webkit-scrollbar { width: 10px; }
+.sidebar::-webkit-scrollbar-track { background: #0b1016; }
+.sidebar::-webkit-scrollbar-thumb {
+  background: #34464f;
+  border: 2px solid #0b1016;
+  border-radius: 999px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover { background: #60757e; }
+
+.address-search-panel { position: relative; }
+.address-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+.address-search-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #34434b;
+  background: #090f14;
+  color: #dce7ea;
+  font-size: 11px;
+}
+.address-search-form input::placeholder { color: #60747d; }
+.address-search-form button {
+  min-width: 62px;
+  border: 1px solid #c7f56b;
+  background: transparent;
+  color: #c7f56b;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+.address-search-form button:hover:not(:disabled) {
+  background: #c7f56b;
+  color: #090d11;
+}
+.address-search-form button:disabled { opacity: .4; cursor: not-allowed; }
+.address-search-status {
+  margin-top: 7px;
+  color: #7f949d;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.address-results {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  margin-top: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.address-result {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #293840;
+  background: #0a1117;
+  color: #aebec5;
+  text-align: left;
+  cursor: pointer;
+}
+.address-result:hover,
+.address-result:focus-visible {
+  border-color: #c7f56b;
+  color: #e8f1f3;
+}
+.address-result strong {
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.address-result span {
+  color: #657b84;
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .address-search-form { grid-template-columns: 1fr; }
+  .address-search-form button { min-height: 34px; }
+}
