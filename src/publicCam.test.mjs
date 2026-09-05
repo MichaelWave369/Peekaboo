@@ -7,6 +7,7 @@ import {
   publicCamSummary,
   safePublicCamUrl,
 } from './publicCam.js'
+import { providerFallbackFor, publicCamProvider } from './publicCamProviders.js'
 
 test('explicit contact:webcam becomes public webcam evidence', () => {
   const evidence = publicCamEvidence({ 'contact:webcam': 'https://cams.example.org/live.jpg' })
@@ -14,6 +15,8 @@ test('explicit contact:webcam becomes public webcam evidence', () => {
   assert.equal(evidence.mediaKind, 'image')
   assert.equal(evidence.inlineEligible, true)
   assert.equal(evidence.hostname, 'cams.example.org')
+  assert.equal(evidence.reachability, 'unverified')
+  assert.equal(evidence.actionKind, 'published-link')
 })
 
 test('unsafe webcam URL schemes and local addresses are rejected', () => {
@@ -54,19 +57,48 @@ test('public webcam kind can describe weather and city context without changing 
   )
 })
 
-test('summary counts public cams by safe render mode', () => {
+test('Nevada 511 legacy routes fall back to the current official camera directory', () => {
+  const provider = publicCamProvider('https://www.nvroads.com/old-camera/123')
+  assert.equal(provider.name, 'Nevada 511')
+  assert.equal(provider.publishedRouteCurrent, false)
+  assert.equal(provider.officialDirectoryUrl, 'https://www.nvroads.com/cctv')
+
+  const fallback = providerFallbackFor('https://www.nvroads.com/old-camera/123')
+  assert.equal(fallback.providerName, 'Nevada 511')
+  assert.equal(fallback.url, 'https://www.nvroads.com/cctv')
+
+  const evidence = publicCamEvidence({ 'contact:webcam': 'https://www.nvroads.com/old-camera/123' })
+  assert.equal(evidence.actionKind, 'official-directory-fallback')
+  assert.equal(evidence.recommendedUrl, 'https://www.nvroads.com/cctv')
+  assert.equal(evidence.inlineEligible, false)
+})
+
+test('Nevada 511 current camera directory is not treated as a stale provider route', () => {
+  const provider = publicCamProvider('https://www.nvroads.com/cctv')
+  assert.equal(provider.publishedRouteCurrent, true)
+  assert.equal(providerFallbackFor('https://www.nvroads.com/cctv'), null)
+})
+
+test('unknown providers do not receive invented fallbacks', () => {
+  assert.equal(publicCamProvider('https://cams.example.org/watch'), null)
+  assert.equal(providerFallbackFor('https://cams.example.org/watch'), null)
+})
+
+test('summary counts public cams by safe render mode and provider fallback', () => {
   const items = [
     { tags: { 'contact:webcam': 'https://example.org/a.jpg' } },
     { tags: { 'contact:webcam': 'https://example.org/b.m3u8' } },
     { tags: { 'contact:webcam': 'https://example.org/watch' } },
     { tags: { 'contact:webcam': 'http://example.org/c.mp4' } },
+    { tags: { 'contact:webcam': 'https://www.nvroads.com/old-camera/123' } },
   ]
   assert.deepEqual(publicCamSummary(items), {
-    total: 4,
+    total: 5,
     inlineEligible: 2,
     image: 1,
     video: 1,
     hls: 1,
-    page: 1,
+    page: 2,
+    providerFallback: 1,
   })
 })
