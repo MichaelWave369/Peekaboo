@@ -3,11 +3,13 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.kumi.systems/api/interpreter',
 ]
 
-const CACHE_PREFIX = 'peekaboo:overpass:v3:'
+export const DATA_SCHEMA_VERSION = '0.4'
+const CACHE_PREFIX = 'peekaboo:overpass:v4:'
 const CACHE_TTL_MS = 5 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 22 * 1000
 const MAX_RENDER_OBJECTS = 6000
 const FLOCK_WIKIDATA = 'Q108485435'
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export const CATEGORY_META = {
   flock: { label: 'Flock Safety ALPR', glyph: 'F' },
@@ -129,6 +131,45 @@ export function normalizeElement(element) {
   }
 }
 
+export function recordAge(timestamp, now = Date.now()) {
+  if (!timestamp) return { status: 'unknown', label: 'UNKNOWN', ageDays: null }
+  const time = new Date(timestamp).getTime()
+  if (!Number.isFinite(time)) return { status: 'unknown', label: 'UNKNOWN', ageDays: null }
+  const ageDays = Math.floor((now - time) / DAY_MS)
+  if (ageDays < -1) return { status: 'unknown', label: 'FUTURE DATE', ageDays }
+  if (ageDays < 365) return { status: 'current', label: '< 1 YEAR', ageDays: Math.max(0, ageDays) }
+  if (ageDays < 1095) return { status: 'aging', label: '1–3 YEARS', ageDays }
+  return { status: 'stale', label: '3+ YEARS', ageDays }
+}
+
+export function ageSummary(items, now = Date.now()) {
+  const counts = { current: 0, aging: 0, stale: 0, unknown: 0 }
+  items.forEach((item) => {
+    const age = recordAge(item.timestamp, now)
+    counts[age.status] = (counts[age.status] || 0) + 1
+  })
+  return counts
+}
+
+export function matchesSearch(item, query) {
+  const tokens = normalized(query).split(/\s+/).filter(Boolean)
+  if (!tokens.length) return true
+  const tagText = Object.entries(item.tags || {}).map(([key, value]) => `${key} ${value}`).join(' ')
+  const haystack = normalized([
+    item.id,
+    item.name,
+    item.category,
+    item.zone,
+    item.operator,
+    item.manufacturer,
+    item.model,
+    item.cameraType,
+    item.direction,
+    tagText,
+  ].filter(Boolean).join(' '))
+  return tokens.every((token) => haystack.includes(token))
+}
+
 export function boundsFingerprint(bounds) {
   if (!bounds) return ''
   return [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()]
@@ -166,6 +207,22 @@ function writeCache(key, value) {
   } catch {
     // Storage can be unavailable in privacy modes. Caching is optional.
   }
+}
+
+function abortableDelay(ms, signal) {
+  if (!ms) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    if (signal?.aborted) onAbort()
+    else signal?.addEventListener('abort', onAbort, { once: true })
+  })
 }
 
 async function requestEndpoint(url, body, externalSignal) {
@@ -219,6 +276,7 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
         fetchedAt: cached.fetchedAt || cached.savedAt,
         fingerprint,
         attempts: 0,
+        failures: cached.failures || [],
       }
     }
   }
@@ -227,8 +285,11 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
   const body = new URLSearchParams({ data: query })
   const errors = []
 
-  for (const endpoint of OVERPASS_ENDPOINTS) {
+  for (let index = 0; index < OVERPASS_ENDPOINTS.length; index += 1) {
+    const endpoint = OVERPASS_ENDPOINTS[index]
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    if (index > 0) await abortableDelay(Math.min(400 * index, 1200), signal)
+
     try {
       const json = await requestEndpoint(endpoint, body, signal)
       const seen = new Set()
@@ -252,6 +313,7 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
         fetchedAt: Date.now(),
         fingerprint,
         attempts: errors.length + 1,
+        failures: [...errors],
       }
       writeCache(fingerprint, result)
       return result
@@ -293,11 +355,34 @@ export function mappingSignal(items, areaKm2) {
   return { density, densityLabel, completeness, detailLabel }
 }
 
+function exportProperties(item) {
+  return {
+    osmType: item.osmType,
+    osmId: item.osmId,
+    category: item.category,
+    name: item.name,
+    zone: item.zone,
+    operator: item.operator,
+    manufacturer: item.manufacturer,
+    manufacturerWikidata: item.manufacturerWikidata,
+    model: item.model,
+    modelWikidata: item.modelWikidata,
+    vendorEvidence: item.vendorEvidence,
+    cameraType: item.cameraType,
+    direction: item.direction,
+    indoor: item.indoor,
+    version: item.version,
+    timestamp: item.timestamp,
+    changeset: item.changeset,
+  }
+}
+
 export function toGeoJSON(items) {
   return {
     type: 'FeatureCollection',
     properties: {
       generator: 'Peekaboo',
+      schemaVersion: DATA_SCHEMA_VERSION,
       generatedAt: new Date().toISOString(),
       note: 'Public OpenStreetMap surveillance records. Vendor identity is an OSM claim, not independent verification. Absence of a record does not imply absence of surveillance.',
     },
@@ -305,26 +390,67 @@ export function toGeoJSON(items) {
       type: 'Feature',
       id: item.id,
       geometry: { type: 'Point', coordinates: [item.lon, item.lat] },
-      properties: {
-        osmType: item.osmType,
-        osmId: item.osmId,
-        category: item.category,
-        name: item.name,
-        zone: item.zone,
-        operator: item.operator,
-        manufacturer: item.manufacturer,
-        manufacturerWikidata: item.manufacturerWikidata,
-        model: item.model,
-        modelWikidata: item.modelWikidata,
-        vendorEvidence: item.vendorEvidence,
-        cameraType: item.cameraType,
-        direction: item.direction,
-        indoor: item.indoor,
-        version: item.version,
-        timestamp: item.timestamp,
-        changeset: item.changeset,
-        tags: item.tags,
-      },
+      properties: { ...exportProperties(item), tags: item.tags },
     })),
+  }
+}
+
+function csvCell(value) {
+  let text = value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
+  if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+export function toCSV(items) {
+  const headers = [
+    'osm_type', 'osm_id', 'category', 'name', 'zone', 'operator', 'manufacturer', 'model',
+    'vendor_evidence', 'camera_type', 'direction', 'indoor', 'record_updated', 'osm_version',
+    'changeset', 'latitude', 'longitude', 'osm_url',
+  ]
+  const rows = items.map((item) => [
+    item.osmType,
+    item.osmId,
+    item.category,
+    item.name,
+    item.zone,
+    item.operator,
+    item.manufacturer,
+    item.model,
+    item.vendorEvidence?.strength || '',
+    item.cameraType,
+    item.direction,
+    item.indoor,
+    item.timestamp,
+    item.version,
+    item.changeset,
+    item.lat,
+    item.lon,
+    `https://www.openstreetmap.org/${item.osmType}/${item.osmId}`,
+  ])
+  return [headers.map(csvCell).join(','), ...rows.map((row) => row.map(csvCell).join(','))].join('\n')
+}
+
+export function buildManifest(items, query = {}) {
+  const countsByCategory = Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, 0]))
+  items.forEach((item) => { countsByCategory[item.category] = (countsByCategory[item.category] || 0) + 1 })
+  return {
+    generator: 'Peekaboo',
+    schemaVersion: DATA_SCHEMA_VERSION,
+    generatedAt: new Date().toISOString(),
+    source: 'OpenStreetMap via Overpass',
+    disclaimer: 'This manifest describes public OSM records, not verified real-world surveillance coverage or device status.',
+    recordCount: items.length,
+    countsByCategory,
+    recordAge: ageSummary(items),
+    query: {
+      endpoint: query.endpoint || null,
+      fetchedAt: query.fetchedAt || null,
+      fingerprint: query.fingerprint || null,
+      cached: Boolean(query.cached),
+      attempts: query.attempts ?? null,
+      failures: query.failures || [],
+      durationMs: query.durationMs ?? null,
+      loadedAreaKm2: query.loadedAreaKm2 ?? null,
+    },
   }
 }
