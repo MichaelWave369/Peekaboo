@@ -1,5 +1,18 @@
 # Peekaboo changelog
 
+## 1.2.2
+
+Stale public-webcam provider repair and reachability semantics.
+
+- Changed webcam status wording from **PUBLIC FEED** to **PUBLISHED LINK** unless Peekaboo has a current official provider route.
+- Added an extensible public-camera provider registry so known providers can supply current official camera directories without overwriting the original OSM provenance.
+- Added Nevada 511 handling: legacy or unrecognized `nvroads.com` webcam routes now use the current official `https://www.nvroads.com/cctv` camera directory as the primary action.
+- Original OSM `contact:webcam` URLs remain visible in the object inspector for provenance even when an official provider fallback is used.
+- Added explicit `reachability: unverified` semantics to public-webcam evidence. OSM publishing a URL is not treated as proof that the URL still works.
+- Direct image/video/HLS loads now surface a clear media-load failure state instead of leaving a silently broken media element.
+- Peekaboo still never probes for alternate stream paths, bypasses authentication, or converts ordinary surveillance records into viewable feeds.
+- Added regression tests for current/legacy Nevada 511 routes, unknown-provider behavior, provider fallbacks, and fallback summary accounting.
+
 ## 1.2.1
 
 Live-cam filtering and stale-viewport clarity fix.
@@ -22,14 +35,14 @@ Public webcam viewing with explicit feed provenance.
 - Direct HTTPS MP4/WebM/OGG media can play in Peekaboo with browser controls.
 - Direct HTTPS HLS (`.m3u8`) links use native browser playback where supported and always retain an external published-feed fallback.
 - Ordinary webcam webpages are never automatically embedded. Peekaboo opens them externally instead.
-- Feed media never auto-loads. The user must explicitly press **LOAD PUBLIC FEED**.
+- Feed media never auto-loads. The user must explicitly press **LOAD PUBLISHED MEDIA**.
 - Webcam URLs are rejected when they use unsupported schemes, credentials, localhost, or common private/link-local address ranges.
 - Added regression tests for URL safety, media classification, weather hints and public-feed evidence.
 - Updated social metadata and public release labels for v1.2.
 
-### Public feed semantics
+### Public webcam semantics
 
-A camera is viewable only when its OSM record explicitly publishes a valid `contact:webcam` URL. A camera name, operator, location, or surveillance category alone never creates feed access.
+A camera is viewable only when its OSM record explicitly publishes a valid `contact:webcam` URL. A camera name, operator, location, or surveillance category alone never creates feed access. A published URL is evidence of a mapping claim, not proof that the destination remains reachable.
 
 Peekaboo does not probe cameras, guess stream paths, discover exposed devices, bypass authentication, or convert ordinary surveillance records into live feeds.
 
