@@ -14,16 +14,10 @@
 
 .context-webcam { color: #b89bff; }
 .context-weather { color: #78d7ff; }
-.context-note.context-webcam {
-  border-color: #5c4682;
-  background: #171322;
-}
-.context-note.context-webcam strong { color: #c5adff; }
-.context-note.context-weather {
-  border-color: #356b82;
-  background: #0f1a20;
-}
-.context-note.context-weather strong { color: #8bdcff; }
+/* v1.1's generic non-public context copy is park-specific. The dedicated
+   webcam viewer below owns webcam/weather provenance so stale park copy never appears. */
+.context-note.context-webcam,
+.context-note.context-weather { display: none; }
 
 .public-cam-card {
   margin: -6px 0 18px;
