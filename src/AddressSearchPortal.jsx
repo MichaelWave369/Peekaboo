@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AddressSearch from './AddressSearch.jsx'
 
+const RELEASE_LABEL = 'PEEKABOO v0.7'
+
 function zoomForPlace(place) {
   if (!place?.bounds) return 16
   const latSpan = Math.abs(place.bounds.north - place.bounds.south)
@@ -27,6 +29,11 @@ function navigateToPlace(place) {
   window.location.reload()
 }
 
+function stampRelease() {
+  const version = document.querySelector('footer span:first-child')
+  if (version && version.textContent !== RELEASE_LABEL) version.textContent = RELEASE_LABEL
+}
+
 export default function AddressSearchPortal() {
   const [host, setHost] = useState(null)
 
@@ -34,6 +41,7 @@ export default function AddressSearchPortal() {
     let createdHost = null
 
     const attach = () => {
+      stampRelease()
       const sidebar = document.querySelector('.sidebar')
       if (!sidebar) return false
 
