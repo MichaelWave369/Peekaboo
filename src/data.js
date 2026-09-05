@@ -6,6 +6,7 @@ const OVERPASS_ENDPOINTS = [
 const CACHE_PREFIX = 'peekaboo:overpass:v2:'
 const CACHE_TTL_MS = 5 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 22 * 1000
+const MAX_RENDER_OBJECTS = 6000
 
 export const CATEGORY_META = {
   camera: { label: 'Camera', glyph: '◉' },
@@ -111,11 +112,19 @@ async function requestEndpoint(url, body, externalSignal) {
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
+    let json
     try {
-      return await response.json()
+      json = await response.json()
     } catch {
       throw new Error('invalid JSON response')
     }
+
+    if (json?.remark) {
+      const remark = String(json.remark).replace(/\s+/g, ' ').trim().slice(0, 220)
+      throw new Error(`Overpass remark: ${remark}`)
+    }
+    if (!Array.isArray(json?.elements)) throw new Error('response did not contain an elements array')
+    return json
   } catch (error) {
     if (externalSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
     if (controller.signal.aborted) throw new Error('request timed out')
@@ -159,6 +168,10 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
           seen.add(item.id)
           return true
         })
+
+      if (items.length > MAX_RENDER_OBJECTS) {
+        throw new Error(`result set contains ${items.length.toLocaleString()} objects; zoom in to keep browser rendering bounded`)
+      }
 
       const result = {
         items,
