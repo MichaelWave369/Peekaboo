@@ -43,8 +43,6 @@ export function isShardableOverpassFailure(message) {
     'timeout',
     'runtime error',
     'out of memory',
-    'too many requests',
-    'http 429',
     'http 502',
     'http 503',
     'http 504',
