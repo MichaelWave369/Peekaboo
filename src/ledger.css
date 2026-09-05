@@ -1,0 +1,41 @@
+.ledger-panel { border-color: #35464f; }
+.ledger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ledger-grid > div { padding: 10px; border: 1px solid #26323a; background: #0b1117; }
+.ledger-grid span { display: block; color: #6f858e; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.ledger-grid strong { display: block; margin-top: 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ledger-grid .added strong { color: #78d7ff; }
+.ledger-grid .removed strong { color: #ff8ea1; }
+.ledger-grid .changed strong { color: #ead48b; }
+.ledger-grid .unchanged strong { color: #91a2a9; }
+
+.ledger-baseline { margin-top: 9px; padding: 9px; border: 1px solid #26323a; background: #0b1117; color: #748991; font-size: 9px; line-height: 1.5; }
+.ledger-baseline strong { color: #b8c5ca; }
+.ledger-fingerprint { display: block; margin-top: 3px; color: #61747c; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.ledger-warning { margin-top: 8px; padding: 8px; border: 1px solid #76642e; background: #211d11; color: #ead48b; font-size: 9px; line-height: 1.45; }
+
+.ledger-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+.ledger-actions button, .ledger-file-button { min-height: 34px; display: grid; place-items: center; padding: 7px; border: 1px solid #34434b; background: transparent; color: #93a6ae; font-size: 8px; font-weight: 900; letter-spacing: .09em; text-align: center; cursor: pointer; }
+.ledger-actions button:hover:not(:disabled), .ledger-file-button:hover { border-color: #c7f56b; color: #c7f56b; }
+.ledger-actions button:disabled { cursor: not-allowed; opacity: .42; }
+.ledger-file-button input { display: none; }
+
+.change-note { margin: -6px 0 18px; padding: 11px; border: 1px solid #34434b; background: #10161c; color: #aebdc3; font-size: 10px; line-height: 1.45; }
+.change-note strong, .change-note span { display: block; }
+.change-note strong { font-size: 8px; letter-spacing: .14em; }
+.change-note span { margin-top: 5px; font-weight: 800; }
+.change-note p { margin: 7px 0 0; color: #74868e; }
+.change-note.added { border-color: #39728a; background: #0d1820; }
+.change-note.added strong, .change-note.added span { color: #78d7ff; }
+.change-note.changed { border-color: #76642e; background: #211d11; }
+.change-note.changed strong, .change-note.changed span { color: #ead48b; }
+.change-note.unchanged strong, .change-note.unchanged span { color: #91a2a9; }
+
+.map-marker.change-added { outline: 3px solid rgba(120, 215, 255, .42); outline-offset: 2px; }
+.map-marker.change-changed { outline: 3px solid rgba(234, 212, 139, .44); outline-offset: 2px; }
+
+.ledger-hud { position: absolute; z-index: 450; right: 12px; top: 12px; max-width: 250px; padding: 8px 10px; border: 1px solid #34434b; background: rgba(8, 11, 16, .88); backdrop-filter: blur(8px); color: #9dafb6; font-size: 8px; font-weight: 800; letter-spacing: .1em; pointer-events: none; }
+.ledger-hud.active { border-color: #76642e; color: #ead48b; }
+
+@media (max-width: 720px) {
+  .ledger-hud { top: 48px; right: 10px; max-width: 180px; }
+}
