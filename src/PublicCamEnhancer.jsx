@@ -7,6 +7,10 @@ function contextRow(label) {
     .find((row) => row.textContent?.toLowerCase().includes(label.toLowerCase())) || null
 }
 
+function categoryRows() {
+  return [...document.querySelectorAll('.filter-list > .filter-row')]
+}
+
 function readRowState(label) {
   const row = contextRow(label)
   const input = row?.querySelector('input[type="checkbox"]')
@@ -14,8 +18,40 @@ function readRowState(label) {
   return { checked: Boolean(input?.checked), count: Number.isFinite(count) ? count : 0 }
 }
 
-function toggleRow(label) {
-  contextRow(label)?.querySelector('input[type="checkbox"]')?.click()
+function setChecked(input, wanted) {
+  if (input && Boolean(input.checked) !== wanted) input.click()
+}
+
+function viewIsDirty() {
+  return Boolean(
+    document.querySelector('.map-hud')?.textContent?.includes('VIEW MOVED') ||
+    [...document.querySelectorAll('.notice-box')].some((node) => node.textContent?.includes('Map moved after the last scan')),
+  )
+}
+
+function activateContextPreset(label) {
+  const target = contextRow(label)
+  const targetInput = target?.querySelector('input[type="checkbox"]')
+  if (!targetInput) return
+
+  const turningOff = Boolean(targetInput.checked)
+
+  // Quick chips are presets. A context-only preset must not inherit a state where
+  // every base camera category was previously disabled, or the result set becomes
+  // logically valid but visually empty.
+  categoryRows().forEach((row) => setChecked(row.querySelector('input[type="checkbox"]'), true))
+
+  ;[...document.querySelectorAll('.context-filter-row')].forEach((row) => {
+    const input = row.querySelector('input[type="checkbox"]')
+    setChecked(input, false)
+  })
+
+  if (!turningOff) setChecked(targetInput, true)
+}
+
+function requestCurrentMapScan() {
+  const button = document.querySelector('.load-button')
+  if (button && !button.disabled) button.click()
 }
 
 function setTextIfChanged(node, value) {
@@ -26,77 +62,108 @@ function stampRelease() {
   const footer = document.querySelector('footer')
   if (footer) {
     const spans = footer.querySelectorAll('span')
-    setTextIfChanged(spans[0], 'PEEKABOO v1.2')
+    setTextIfChanged(spans[0], 'PEEKABOO v1.2.1')
     setTextIfChanged(spans[1], 'PUBLIC FEEDS ONLY • NO DEVICE DISCOVERY • NO STREAM PROBING')
   }
 
   const release = document.querySelector('.release-panel')
   const version = release?.querySelector('.panel-heading span:last-child')
-  setTextIfChanged(version, 'v1.2')
+  setTextIfChanged(version, 'v1.2.1')
   const list = release?.querySelector('ul')
-  if (list && !list.querySelector('[data-v12-live-cams]')) {
+  if (list && !list.querySelector('[data-v121-cam-ux]')) {
     const item = document.createElement('li')
-    item.dataset.v12LiveCams = 'true'
-    item.textContent = 'Public webcam viewing from explicit OSM contact:webcam links, with safe inline media and external-page fallback.'
+    item.dataset.v121CamUx = 'true'
+    item.textContent = 'Live Cam / Weather quick filters now act as complete presets and stale viewport counts explicitly require a rescan.'
     list.prepend(item)
   }
 }
 
-function QuickCamFilters() {
-  const [state, setState] = useState(() => ({
+function readQuickState() {
+  return {
     live: readRowState('Public live cam'),
     weather: readRowState('Weather / conditions cam'),
-  }))
+    dirty: viewIsDirty(),
+  }
+}
+
+function QuickCamFilters() {
+  const [state, setState] = useState(readQuickState)
 
   useEffect(() => {
     const sync = () => setState((current) => {
-      const next = {
-        live: readRowState('Public live cam'),
-        weather: readRowState('Weather / conditions cam'),
-      }
+      const next = readQuickState()
       if (
         current.live.checked === next.live.checked &&
         current.live.count === next.live.count &&
         current.weather.checked === next.weather.checked &&
-        current.weather.count === next.weather.count
+        current.weather.count === next.weather.count &&
+        current.dirty === next.dirty
       ) return current
       return next
     })
     sync()
-    const timer = setInterval(sync, 500)
+    const timer = setInterval(sync, 350)
     return () => clearInterval(timer)
   }, [])
+
+  const clickPreset = (label) => {
+    activateContextPreset(label)
+    setTimeout(() => setState(readQuickState()), 0)
+  }
 
   return (
     <>
       <button
         type="button"
-        className={state.live.checked ? 'active live-cam-chip' : 'live-cam-chip'}
+        className={`${state.live.checked ? 'active ' : ''}${state.dirty ? 'stale ' : ''}live-cam-chip`.trim()}
         aria-pressed={state.live.checked}
-        onClick={() => { toggleRow('Public live cam'); setTimeout(() => setState({ live: readRowState('Public live cam'), weather: readRowState('Weather / conditions cam') }), 0) }}
+        title={state.dirty ? 'Counts belong to the previous scanned viewport. Rescan the current map.' : 'Show only records with an explicit public webcam URL.'}
+        onClick={() => clickPreset('Public live cam')}
       >
-        LIVE CAMS <strong>{state.live.count}</strong>
+        LIVE CAMS <strong>{state.dirty ? 'RESCAN' : state.live.count}</strong>
       </button>
       <button
         type="button"
-        className={state.weather.checked ? 'active weather-cam-chip' : 'weather-cam-chip'}
+        className={`${state.weather.checked ? 'active ' : ''}${state.dirty ? 'stale ' : ''}weather-cam-chip`.trim()}
         aria-pressed={state.weather.checked}
-        onClick={() => { toggleRow('Weather / conditions cam'); setTimeout(() => setState({ live: readRowState('Public live cam'), weather: readRowState('Weather / conditions cam') }), 0) }}
+        title={state.dirty ? 'Counts belong to the previous scanned viewport. Rescan the current map.' : 'Show only public webcams described as weather / conditions feeds.'}
+        onClick={() => clickPreset('Weather / conditions cam')}
       >
-        WEATHER <strong>{state.weather.count}</strong>
+        WEATHER <strong>{state.dirty ? 'RESCAN' : state.weather.count}</strong>
       </button>
     </>
   )
 }
 
+function CamRescanNotice() {
+  const [state, setState] = useState(readQuickState)
+
+  useEffect(() => {
+    const timer = setInterval(() => setState(readQuickState()), 350)
+    return () => clearInterval(timer)
+  }, [])
+
+  if (!state.dirty || (!state.live.checked && !state.weather.checked)) return null
+
+  return (
+    <div className="cam-rescan-notice" role="status">
+      <strong>LIVE CAM RESULTS ARE FROM THE PREVIOUS SCAN</strong>
+      <span>Rescan this viewport before using those counts as Reno results.</span>
+      <button type="button" onClick={requestCurrentMapScan}>RESCAN CURRENT MAP</button>
+    </div>
+  )
+}
+
 export default function PublicCamEnhancer() {
   const [chipHost, setChipHost] = useState(null)
+  const [noticeHost, setNoticeHost] = useState(null)
   const [viewerHost, setViewerHost] = useState(null)
   const [tags, setTags] = useState(null)
   const rawTextRef = useRef('')
 
   useEffect(() => {
     let chip = null
+    let notice = null
     let viewer = null
 
     const attach = () => {
@@ -112,6 +179,17 @@ export default function PublicCamEnhancer() {
           chips.appendChild(chip)
         }
         setChipHost((current) => current === chip ? current : chip)
+      }
+
+      const contextBlock = document.querySelector('.context-filter-block')
+      if (contextBlock) {
+        notice = document.getElementById('peekaboo-cam-rescan-notice-host')
+        if (!notice) {
+          notice = document.createElement('div')
+          notice.id = 'peekaboo-cam-rescan-notice-host'
+          contextBlock.appendChild(notice)
+        }
+        setNoticeHost((current) => current === notice ? current : notice)
       }
 
       const drawer = document.querySelector('.detail-drawer.open')
@@ -147,6 +225,7 @@ export default function PublicCamEnhancer() {
     return () => {
       observer.disconnect()
       if (chip?.isConnected) chip.remove()
+      if (notice?.isConnected) notice.remove()
       if (viewer?.isConnected) viewer.remove()
     }
   }, [])
@@ -156,6 +235,7 @@ export default function PublicCamEnhancer() {
   return (
     <>
       {chipHost && createPortal(<QuickCamFilters />, chipHost)}
+      {noticeHost && createPortal(<CamRescanNotice />, noticeHost)}
       {viewer}
     </>
   )
