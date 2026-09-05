@@ -14,6 +14,13 @@ import {
   toCSV,
   toGeoJSON,
 } from './data.js'
+import {
+  clusterRecords,
+  diagnosticsManifest,
+  metadataProfile,
+  metadataSummary,
+  proximityDiagnostics,
+} from './robustness.js'
 
 const START = [40.7128, -74.006]
 const START_ZOOM = 13
@@ -62,6 +69,17 @@ function makeMarkerIcon(category, selected) {
   })
 }
 
+function makeClusterIcon(count) {
+  const text = count > 999 ? '999+' : String(count)
+  const size = count >= 100 ? 46 : count >= 20 ? 40 : 36
+  return L.divIcon({
+    className: '',
+    html: `<div class="map-cluster" aria-label="Cluster of ${count} mapped records"><strong>${text}</strong></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
+}
+
 function MapBridge({ onView, onScan, request }) {
   const map = useMap()
 
@@ -84,6 +102,55 @@ function MapBridge({ onView, onScan, request }) {
   }, [map, onScan, request])
 
   return null
+}
+
+function MapRecords({ entries, selected, onSelect }) {
+  const map = useMap()
+
+  return entries.map((entry) => {
+    if (entry.kind === 'cluster') {
+      const categoryText = Object.entries(entry.categories)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([key, count]) => `${CATEGORY_META[key]?.label || key}: ${count}`)
+        .join(' • ')
+      return (
+        <Marker
+          key={entry.id}
+          position={[entry.lat, entry.lon]}
+          icon={makeClusterIcon(entry.count)}
+          eventHandlers={{
+            click: () => map.setView([entry.lat, entry.lon], Math.min(map.getZoom() + 2, 18)),
+          }}
+        >
+          <Popup>
+            <strong>{entry.count} mapped records</strong><br />
+            {categoryText}<br />
+            Zooming in separates source records.
+          </Popup>
+        </Marker>
+      )
+    }
+
+    const item = entry.item
+    return (
+      <Marker
+        key={item.id}
+        position={[item.lat, item.lon]}
+        icon={makeMarkerIcon(item.category, selected?.id === item.id)}
+        eventHandlers={{ click: () => onSelect(item) }}
+      >
+        <Popup>
+          <strong>{item.name}</strong><br />
+          {CATEGORY_META[item.category]?.label || 'Surveillance object'}<br />
+          {item.manufacturer && <>Manufacturer: {item.manufacturer}<br /></>}
+          {item.model && <>Model: {item.model}<br /></>}
+          Zone: {item.zone}<br />
+          OSM record age: {recordAge(item.timestamp).label}
+        </Popup>
+      </Marker>
+    )
+  })
 }
 
 function Field({ label, value }) {
@@ -139,6 +206,7 @@ export default function App() {
   const [loadedAreaKm2, setLoadedAreaKm2] = useState(0)
   const [queryInfo, setQueryInfo] = useState(null)
   const [utilityMessage, setUtilityMessage] = useState('')
+  const [online, setOnline] = useState(() => navigator.onLine)
   const abortRef = useRef(null)
 
   const areaKm2 = useMemo(() => (bounds ? boundsAreaKm2(bounds) : 0), [bounds])
@@ -149,12 +217,29 @@ export default function App() {
   const layerFiltered = useMemo(() => items.filter((item) => filters[item.category]), [items, filters])
   const filtered = useMemo(() => layerFiltered.filter((item) => matchesSearch(item, searchQuery)), [layerFiltered, searchQuery])
   const recordAges = useMemo(() => ageSummary(filtered), [filtered])
+  const detailStats = useMemo(() => metadataSummary(filtered), [filtered])
+  const proximity = useMemo(() => proximityDiagnostics(filtered), [filtered])
   const selectedAge = useMemo(() => (selected ? recordAge(selected.timestamp) : null), [selected])
+  const selectedDetail = useMemo(() => (selected ? metadataProfile(selected) : null), [selected])
+  const selectedNeighbors = useMemo(() => (selected ? proximity.neighbors.get(selected.id) || [] : []), [proximity, selected])
+  const renderedEntries = useMemo(() => clusterRecords(filtered, view?.zoom ?? initial.current.zoom), [filtered, view?.zoom])
+  const clusterCount = useMemo(() => renderedEntries.filter((entry) => entry.kind === 'cluster').length, [renderedEntries])
   const categoryCounts = useMemo(() => {
     const counts = Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, 0]))
     items.forEach((item) => { counts[item.category] = (counts[item.category] || 0) + 1 })
     return counts
   }, [items])
+
+  useEffect(() => {
+    const onOnline = () => setOnline(true)
+    const onOffline = () => setOnline(false)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [])
 
   useEffect(() => {
     if (!view) return
@@ -175,6 +260,8 @@ export default function App() {
   useEffect(() => {
     if (selected && !filtered.some((item) => item.id === selected.id)) setSelected(null)
   }, [filtered, selected])
+
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const runQuery = useCallback(async (nextBounds, force = false) => {
     const area = boundsAreaKm2(nextBounds)
@@ -241,7 +328,11 @@ export default function App() {
   }
 
   const exportManifest = () => {
-    const manifest = buildManifest(filtered, { ...queryInfo, loadedAreaKm2 })
+    const base = buildManifest(filtered, { ...queryInfo, loadedAreaKm2 })
+    const manifest = {
+      ...base,
+      diagnostics: diagnosticsManifest(filtered, { zoom: view?.zoom ?? null }),
+    }
     downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}-manifest.json`, JSON.stringify(manifest, null, 2), 'application/json')
     setUtilityMessage('MANIFEST EXPORTED')
   }
@@ -280,8 +371,16 @@ export default function App() {
                 Loaded {lastUpdated.toLocaleTimeString()} {queryInfo?.cached ? '• session cache' : '• live query'}
               </div>
             )}
+            {!online && <div className="notice-box">Browser reports offline. Existing loaded records remain available; network refreshes may fail until connectivity returns.</div>}
             {viewDirty && <div className="notice-box">Map moved after the last scan. Loaded objects and statistics still belong to the previous viewport.</div>}
-            {error && <div className="error-box">{error}</div>}
+            {error && (
+              <div className="error-box" role="alert">
+                <strong>QUERY FAILED</strong>
+                <span>{error}</span>
+                {items.length > 0 && <small>Previously loaded records were preserved.</small>}
+                <button onClick={() => requestScan(true)} disabled={loading || !bounds}>RETRY CURRENT MAP</button>
+              </div>
+            )}
           </section>
 
           <section className="panel">
@@ -323,6 +422,21 @@ export default function App() {
             <p className="microcopy">These values are bound to the viewport that produced the loaded OSM records, not real-world surveillance completeness.</p>
           </section>
 
+          <section className="panel diagnostics-panel">
+            <div className="panel-heading"><span>RECORD DIAGNOSTICS</span><span>NOT TRUTH SCORE</span></div>
+            <div className="metric-grid">
+              <div><span>Avg detail</span><strong>{detailStats.averageScore}/100</strong></div>
+              <div><span>High detail</span><strong>{detailStats.high}</strong></div>
+              <div><span>Co-located pairs</span><strong>{proximity.pairCount}</strong></div>
+              <div><span>Map markers</span><strong>{renderedEntries.length}</strong></div>
+            </div>
+            <div className="render-status">
+              <span>AUTO CLUSTER</span>
+              <strong>{clusterCount ? `${clusterCount} ACTIVE` : 'NOT NEEDED'}</strong>
+            </div>
+            <p className="microcopy">Detail measures metadata completeness only. Co-located pairs are mapped records within ~{proximity.thresholdMeters} m and are not automatically duplicates. Clustering changes rendering only, never record totals or exports.</p>
+          </section>
+
           <section className="panel age-panel">
             <div className="panel-heading"><span>OSM RECORD AGE</span><span>NOT DEVICE STATUS</span></div>
             <div className="age-grid">
@@ -348,7 +462,7 @@ export default function App() {
               <button onClick={exportCSV} disabled={!filtered.length}>EXPORT CSV</button>
               <button onClick={exportManifest} disabled={!queryInfo}>EXPORT MANIFEST</button>
             </div>
-            {utilityMessage && <div className="utility-message">{utilityMessage}</div>}
+            {utilityMessage && <div className="utility-message" aria-live="polite">{utilityMessage}</div>}
           </section>
         </aside>
 
@@ -359,27 +473,21 @@ export default function App() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapBridge onView={handleView} onScan={runQuery} request={request} />
-            {filtered.map((item) => (
-              <Marker
-                key={item.id}
-                position={[item.lat, item.lon]}
-                icon={makeMarkerIcon(item.category, selected?.id === item.id)}
-                eventHandlers={{ click: () => setSelected(item) }}
-              >
-                <Popup>
-                  <strong>{item.name}</strong><br />
-                  {CATEGORY_META[item.category]?.label || 'Surveillance object'}<br />
-                  {item.manufacturer && <>Manufacturer: {item.manufacturer}<br /></>}
-                  {item.model && <>Model: {item.model}<br /></>}
-                  Zone: {item.zone}<br />
-                  OSM record age: {recordAge(item.timestamp).label}
-                </Popup>
-              </Marker>
-            ))}
+            <MapRecords entries={renderedEntries} selected={selected} onSelect={setSelected} />
           </MapContainer>
-          <div className={`map-hud ${viewDirty ? 'warn' : ''}`}>
+          <div className={`map-hud ${viewDirty ? 'warn' : !online ? 'warn' : ''}`}>
             <span className={loading ? 'pulse' : ''} />
-            {loading ? 'LIVE OSM QUERY' : viewDirty ? 'VIEW MOVED • RESCAN' : queryInfo?.cached ? 'SESSION CACHE • PUBLIC OSM' : 'PUBLIC OSM DATA'}
+            {loading
+              ? 'LIVE OSM QUERY'
+              : !online
+                ? 'BROWSER OFFLINE • LOADED DATA ONLY'
+                : viewDirty
+                  ? 'VIEW MOVED • RESCAN'
+                  : clusterCount
+                    ? `${filtered.length} RECORDS • ${renderedEntries.length} MAP MARKERS`
+                    : queryInfo?.cached
+                      ? 'SESSION CACHE • PUBLIC OSM'
+                      : 'PUBLIC OSM DATA'}
           </div>
         </section>
 
@@ -396,6 +504,19 @@ export default function App() {
                   <span>{selected.vendorEvidence.label}</span>
                   <code>{selected.vendorEvidence.basis}</code>
                   <p>This identifies the mapper's public vendor claim. Peekaboo does not independently verify the physical device.</p>
+                </div>
+              )}
+              <div className={`metadata-note ${selectedDetail?.level || 'low'}`}>
+                <strong>METADATA DETAIL</strong>
+                <span>{selectedDetail?.label} • {selectedDetail?.score}/100</span>
+                {selectedDetail?.missing.length > 0 && <p>Missing or generic fields: {selectedDetail.missing.join(', ')}.</p>}
+                <p>This measures descriptive metadata completeness, not whether the mapped claim is true.</p>
+              </div>
+              {selectedNeighbors.length > 0 && (
+                <div className="proximity-note">
+                  <strong>CO-LOCATED RECORD CANDIDATE</strong>
+                  <span>{selectedNeighbors.length} other mapped record{selectedNeighbors.length === 1 ? '' : 's'} within ~{proximity.thresholdMeters} m</span>
+                  <p>Nearby records may be duplicates, separate devices on the same structure, or legitimate overlapping mappings. Peekaboo does not merge them automatically.</p>
                 </div>
               )}
               <div className={`record-age-note ${selectedAge?.status || 'unknown'}`}>
@@ -440,7 +561,7 @@ export default function App() {
       </main>
 
       <footer>
-        <span>PEEKABOO v0.4</span>
+        <span>PEEKABOO v0.5</span>
         <span>PUBLIC DATA • NO LIVE FEEDS • NO DEVICE DISCOVERY</span>
         <span>DATA © OPENSTREETMAP CONTRIBUTORS</span>
       </footer>
