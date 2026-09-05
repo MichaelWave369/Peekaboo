@@ -1,0 +1,156 @@
+/* Peekaboo v1.2 public webcam pass. Public feeds only, never device discovery. */
+
+.public-cam-chip-host { display: contents; }
+.map-filter-chips .live-cam-chip.active {
+  border-color: #8b63d8;
+  background: #f4efff;
+  color: #6641ad;
+}
+.map-filter-chips .weather-cam-chip.active {
+  border-color: #4b9fc4;
+  background: #edf9ff;
+  color: #276f90;
+}
+
+.context-webcam { color: #b89bff; }
+.context-weather { color: #78d7ff; }
+.context-note.context-webcam {
+  border-color: #5c4682;
+  background: #171322;
+}
+.context-note.context-webcam strong { color: #c5adff; }
+.context-note.context-weather {
+  border-color: #356b82;
+  background: #0f1a20;
+}
+.context-note.context-weather strong { color: #8bdcff; }
+
+.public-cam-card {
+  margin: -6px 0 18px;
+  padding: 12px;
+  border: 1px solid #5c4682;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #171322, #10151b);
+  color: #b9c6cb;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.public-cam-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.public-cam-heading > div { min-width: 0; }
+.public-cam-heading strong,
+.public-cam-heading span { display: block; }
+.public-cam-heading strong {
+  color: #c5adff;
+  font-size: 8px;
+  letter-spacing: .14em;
+}
+.public-cam-heading > div > span {
+  margin-top: 4px;
+  color: #edf2f4;
+  font-size: 12px;
+  font-weight: 800;
+}
+.public-cam-live-dot {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid #5b8042;
+  border-radius: 999px;
+  background: #142012;
+  color: #c7f56b !important;
+  font-size: 7px !important;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+.public-cam-receipt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  margin-top: 9px;
+  color: #8b9aa0;
+  font-size: 8px;
+}
+.public-cam-receipt code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #090d12;
+  color: #aab7bc;
+}
+.public-cam-load,
+.public-cam-media button,
+.public-cam-open {
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #765dc0;
+  border-radius: 8px;
+  background: #6a4db7;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.public-cam-load:hover,
+.public-cam-media button:hover,
+.public-cam-open:hover { filter: brightness(1.08); }
+.public-cam-open {
+  border-color: #384851;
+  background: transparent;
+  color: #b6c5ca;
+}
+.public-cam-media {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.public-cam-media img,
+.public-cam-media video {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  border: 1px solid #2c3940;
+  border-radius: 8px;
+  background: #05080a;
+  object-fit: contain;
+}
+.public-cam-media button {
+  margin-top: 0;
+  min-height: 32px;
+  border-color: #394a52;
+  background: #111920;
+  color: #aebdc3;
+}
+.public-cam-media small {
+  color: #7f9199;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.public-cam-card > p {
+  margin: 10px 0 0;
+  color: #7f9199;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.public-cam-card > p code { color: #bba5f1; }
+
+@media (pointer: coarse) {
+  .public-cam-load,
+  .public-cam-media button,
+  .public-cam-open { min-height: 44px; }
+}
+
+@media (max-width: 560px) {
+  .public-cam-card { padding: 10px; }
+  .public-cam-media img,
+  .public-cam-media video { max-height: 36vh; }
+  .public-cam-heading { gap: 7px; }
+}
