@@ -3,7 +3,7 @@ import L from 'leaflet'
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { boundsAreaKm2, CATEGORY_META, fetchSurveillance, mappingSignal } from './data.js'
 
-const START = [38.5816, -121.4944]
+const START = [40.7128, -74.006]
 const MAX_AREA_KM2 = 2500
 
 function makeMarkerIcon(category, selected) {
