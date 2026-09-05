@@ -21,10 +21,20 @@ import {
   metadataSummary,
   proximityDiagnostics,
 } from './robustness.js'
+import {
+  buildChangeReport,
+  compareSnapshots,
+  createSnapshot,
+  loadBaseline,
+  removeBaseline,
+  saveBaseline,
+  validateSnapshot,
+} from './ledger.js'
 
 const START = [40.7128, -74.006]
 const START_ZOOM = 13
 const MAX_AREA_KM2 = 2500
+const MAX_SNAPSHOT_IMPORT_BYTES = 6 * 1024 * 1024
 
 function defaultFilters() {
   return Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, true]))
@@ -59,11 +69,12 @@ function parseInitialState() {
   }
 }
 
-function makeMarkerIcon(category, selected) {
+function makeMarkerIcon(category, selected, changeStatus) {
   const meta = CATEGORY_META[category] || CATEGORY_META.other
+  const changeClass = changeStatus === 'added' || changeStatus === 'changed' ? ` change-${changeStatus}` : ''
   return L.divIcon({
     className: '',
-    html: `<div class="map-marker ${category} ${selected ? 'selected' : ''}" aria-label="${meta.label}"><span>${meta.glyph}</span></div>`,
+    html: `<div class="map-marker ${category}${changeClass} ${selected ? 'selected' : ''}" aria-label="${meta.label}"><span>${meta.glyph}</span></div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   })
@@ -104,7 +115,7 @@ function MapBridge({ onView, onScan, request }) {
   return null
 }
 
-function MapRecords({ entries, selected, onSelect }) {
+function MapRecords({ entries, selected, onSelect, changeStatusById }) {
   const map = useMap()
 
   return entries.map((entry) => {
@@ -133,11 +144,12 @@ function MapRecords({ entries, selected, onSelect }) {
     }
 
     const item = entry.item
+    const change = changeStatusById?.get(item.id)
     return (
       <Marker
         key={item.id}
         position={[item.lat, item.lon]}
-        icon={makeMarkerIcon(item.category, selected?.id === item.id)}
+        icon={makeMarkerIcon(item.category, selected?.id === item.id, change?.status)}
         eventHandlers={{ click: () => onSelect(item) }}
       >
         <Popup>
@@ -147,6 +159,7 @@ function MapRecords({ entries, selected, onSelect }) {
           {item.model && <>Model: {item.model}<br /></>}
           Zone: {item.zone}<br />
           OSM record age: {recordAge(item.timestamp).label}
+          {change && change.status !== 'unchanged' && <><br />Change ledger: {change.label}</>}
         </Popup>
       </Marker>
     )
@@ -190,6 +203,14 @@ function downloadText(filename, content, type) {
   URL.revokeObjectURL(url)
 }
 
+function browserStorage() {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
   const initial = useRef(parseInitialState())
   const [items, setItems] = useState([])
@@ -207,6 +228,10 @@ export default function App() {
   const [queryInfo, setQueryInfo] = useState(null)
   const [utilityMessage, setUtilityMessage] = useState('')
   const [online, setOnline] = useState(() => navigator.onLine)
+  const [baseline, setBaseline] = useState(null)
+  const [currentSnapshot, setCurrentSnapshot] = useState(null)
+  const [comparison, setComparison] = useState(null)
+  const [ledgerError, setLedgerError] = useState('')
   const abortRef = useRef(null)
 
   const areaKm2 = useMemo(() => (bounds ? boundsAreaKm2(bounds) : 0), [bounds])
@@ -224,6 +249,9 @@ export default function App() {
   const selectedNeighbors = useMemo(() => (selected ? proximity.neighbors.get(selected.id) || [] : []), [proximity, selected])
   const renderedEntries = useMemo(() => clusterRecords(filtered, view?.zoom ?? initial.current.zoom), [filtered, view?.zoom])
   const clusterCount = useMemo(() => renderedEntries.filter((entry) => entry.kind === 'cluster').length, [renderedEntries])
+  const changeStatusById = comparison?.compatible ? comparison.statusById : null
+  const selectedChange = useMemo(() => (selected && changeStatusById ? changeStatusById.get(selected.id) || null : null), [selected, changeStatusById])
+  const deltaSummary = comparison?.compatible ? comparison.summary : null
   const categoryCounts = useMemo(() => {
     const counts = Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, 0]))
     items.forEach((item) => { counts[item.category] = (counts[item.category] || 0) + 1 })
@@ -279,12 +307,27 @@ export default function App() {
 
     try {
       const result = await fetchSurveillance(nextBounds, controller.signal, { force })
+      const query = { ...result, durationMs: Math.max(0, Math.round(performance.now() - started)) }
+      const snapshot = createSnapshot(result.items, { ...query, loadedAreaKm2: area })
+      const saved = loadBaseline(browserStorage(), result.fingerprint)
+
       setItems(result.items)
       setSelected((current) => result.items.find((item) => item.id === current?.id) || null)
       setLoadedAreaKm2(area)
       setLoadedFingerprint(result.fingerprint)
       setLastUpdated(new Date(result.fetchedAt))
-      setQueryInfo({ ...result, durationMs: Math.max(0, Math.round(performance.now() - started)) })
+      setQueryInfo(query)
+      setCurrentSnapshot(snapshot)
+
+      if (saved.ok) {
+        setBaseline(saved.snapshot)
+        setComparison(saved.snapshot ? compareSnapshots(saved.snapshot, snapshot) : null)
+        setLedgerError('')
+      } else {
+        setBaseline(null)
+        setComparison(null)
+        setLedgerError(`Saved baseline could not be loaded: ${saved.error}`)
+      }
     } catch (err) {
       if (err.name !== 'AbortError') setError(err.message || 'Could not load OpenStreetMap surveillance data.')
     } finally {
@@ -332,9 +375,99 @@ export default function App() {
     const manifest = {
       ...base,
       diagnostics: diagnosticsManifest(filtered, { zoom: view?.zoom ?? null }),
+      changeLedger: comparison?.compatible ? {
+        scope: 'full loaded viewport before UI filters/search',
+        baselineCapturedAt: baseline?.capturedAt || null,
+        baselineSnapshotFingerprint: baseline?.snapshotFingerprint || null,
+        currentSnapshotFingerprint: currentSnapshot?.snapshotFingerprint || null,
+        summary: comparison.summary,
+        interpretation: 'OSM record comparison only; not proof of physical device installation, removal, presence, or activity.',
+      } : null,
     }
     downloadText(`peekaboo-${new Date().toISOString().slice(0, 10)}-manifest.json`, JSON.stringify(manifest, null, 2), 'application/json')
     setUtilityMessage('MANIFEST EXPORTED')
+  }
+
+  const captureBaseline = () => {
+    if (!currentSnapshot || viewDirty) return
+    const result = saveBaseline(browserStorage(), currentSnapshot)
+    if (!result.ok) {
+      setLedgerError(result.error)
+      return
+    }
+    setBaseline(currentSnapshot)
+    setComparison(compareSnapshots(currentSnapshot, currentSnapshot))
+    setLedgerError('')
+    setUtilityMessage('BASELINE SAVED FOR THIS VIEWPORT')
+  }
+
+  const clearBaseline = () => {
+    if (!loadedFingerprint) return
+    const result = removeBaseline(browserStorage(), loadedFingerprint)
+    if (!result.ok) {
+      setLedgerError(result.error)
+      return
+    }
+    setBaseline(null)
+    setComparison(null)
+    setLedgerError('')
+    setUtilityMessage('BASELINE CLEARED')
+  }
+
+  const exportSnapshot = () => {
+    if (!currentSnapshot) return
+    downloadText(
+      `peekaboo-${new Date().toISOString().slice(0, 10)}-snapshot.json`,
+      JSON.stringify(currentSnapshot, null, 2),
+      'application/json',
+    )
+    setUtilityMessage('SNAPSHOT EXPORTED')
+  }
+
+  const exportChanges = () => {
+    if (!baseline || !currentSnapshot || !comparison?.compatible) return
+    const report = buildChangeReport(baseline, currentSnapshot, comparison)
+    downloadText(
+      `peekaboo-${new Date().toISOString().slice(0, 10)}-changes.json`,
+      JSON.stringify(report, null, 2),
+      'application/json',
+    )
+    setUtilityMessage('CHANGE REPORT EXPORTED')
+  }
+
+  const importBaseline = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !currentSnapshot || viewDirty) return
+    if (file.size > MAX_SNAPSHOT_IMPORT_BYTES) {
+      setLedgerError('Snapshot import exceeds the 6 MB browser safety limit.')
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(await file.text())
+      const check = validateSnapshot(parsed)
+      if (!check.ok) {
+        setLedgerError(check.error)
+        return
+      }
+      if (parsed.scopeFingerprint !== currentSnapshot.scopeFingerprint) {
+        setLedgerError('Imported baseline belongs to a different viewport. Peekaboo will not compare different query areas.')
+        return
+      }
+      const saved = saveBaseline(browserStorage(), parsed)
+      if (!saved.ok) {
+        setLedgerError(saved.error)
+        return
+      }
+      const nextComparison = compareSnapshots(parsed, currentSnapshot)
+      setBaseline(parsed)
+      setComparison(nextComparison)
+      setLedgerError('')
+      setUtilityMessage('BASELINE IMPORTED')
+    } catch {
+      setLedgerError('Snapshot import is not valid JSON.')
+    }
   }
 
   const scanLabel = loading ? 'QUERYING OPENSTREETMAP…' : viewDirty ? 'RESCAN CURRENT MAP' : 'SCAN CURRENT MAP'
@@ -448,6 +581,48 @@ export default function App() {
             <p className="microcopy">Age measures the last OSM edit timestamp. An old record may still describe a real device; a recent edit is not independent physical verification.</p>
           </section>
 
+          <section className="panel ledger-panel">
+            <div className="panel-heading"><span>CHANGE LEDGER</span><span>OSM RECORDS ONLY</span></div>
+            {currentSnapshot ? (
+              <>
+                {baseline && comparison?.compatible ? (
+                  <>
+                    <div className="ledger-grid">
+                      <div className="added"><span>Newly mapped</span><strong>{deltaSummary.added}</strong></div>
+                      <div className="removed"><span>Removed from OSM</span><strong>{deltaSummary.removed}</strong></div>
+                      <div className="changed"><span>Metadata changed</span><strong>{deltaSummary.changed}</strong></div>
+                      <div className="unchanged"><span>Unchanged</span><strong>{deltaSummary.unchanged}</strong></div>
+                    </div>
+                    <div className="ledger-baseline">
+                      Baseline <strong>{formatTimestamp(baseline.capturedAt)}</strong>
+                      <span className="ledger-fingerprint">baseline {baseline.snapshotFingerprint} • current {currentSnapshot.snapshotFingerprint}</span>
+                    </div>
+                    <p className="microcopy">Changes describe the public OSM records for the same scanned viewport. They do not independently prove physical installation, removal, presence, or activity.</p>
+                  </>
+                ) : (
+                  <div className="ledger-baseline">
+                    No baseline saved for this loaded viewport. Save one now, then rescan the same viewport later to compare public OSM records.
+                    <span className="ledger-fingerprint">scope {currentSnapshot.scopeFingerprint}</span>
+                  </div>
+                )}
+                {comparison && !comparison.compatible && <div className="ledger-warning">{comparison.reason}</div>}
+                {ledgerError && <div className="ledger-warning">{ledgerError}</div>}
+                <div className="ledger-actions">
+                  <button onClick={captureBaseline} disabled={viewDirty}>{baseline ? 'REPLACE BASELINE' : 'SAVE BASELINE'}</button>
+                  <button onClick={clearBaseline} disabled={!baseline}>CLEAR BASELINE</button>
+                  <button onClick={exportSnapshot}>EXPORT SNAPSHOT</button>
+                  <label className="ledger-file-button">
+                    IMPORT BASELINE
+                    <input type="file" accept="application/json,.json" onChange={importBaseline} disabled={viewDirty} />
+                  </label>
+                  <button onClick={exportChanges} disabled={!comparison?.compatible}>EXPORT CHANGES</button>
+                </div>
+              </>
+            ) : (
+              <p className="microcopy">Scan a viewport first. Peekaboo stores baselines locally in your browser and never uploads them anywhere.</p>
+            )}
+          </section>
+
           <section className="panel data-tools">
             <div className="panel-heading"><span>DATA TOOLS</span><span>PUBLIC RECORDS</span></div>
             <div className="source-grid">
@@ -473,7 +648,7 @@ export default function App() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapBridge onView={handleView} onScan={runQuery} request={request} />
-            <MapRecords entries={renderedEntries} selected={selected} onSelect={setSelected} />
+            <MapRecords entries={renderedEntries} selected={selected} onSelect={setSelected} changeStatusById={changeStatusById} />
           </MapContainer>
           <div className={`map-hud ${viewDirty ? 'warn' : !online ? 'warn' : ''}`}>
             <span className={loading ? 'pulse' : ''} />
@@ -489,6 +664,11 @@ export default function App() {
                       ? 'SESSION CACHE • PUBLIC OSM'
                       : 'PUBLIC OSM DATA'}
           </div>
+          {comparison?.compatible && (
+            <div className={`ledger-hud ${deltaSummary.totalDelta ? 'active' : ''}`}>
+              {deltaSummary.totalDelta ? `CHANGE LEDGER • ${deltaSummary.totalDelta} OSM Δ` : 'BASELINE MATCH • 0 OSM Δ'}
+            </div>
+          )}
         </section>
 
         <aside className={`detail-drawer ${selected ? 'open' : ''}`}>
@@ -498,6 +678,14 @@ export default function App() {
               <div className="eyebrow">OBJECT / {selected.osmType.toUpperCase()} {selected.osmId}</div>
               <h2>{selected.name}</h2>
               <div className={`category-pill ${selected.category}`}>{CATEGORY_META[selected.category]?.label}</div>
+              {selectedChange && (
+                <div className={`change-note ${selectedChange.status}`}>
+                  <strong>CHANGE LEDGER / OSM</strong>
+                  <span>{selectedChange.label}</span>
+                  {selectedChange.fields.length > 0 && <p>Changed fields: {selectedChange.fields.join(', ')}.</p>}
+                  <p>Compared with the saved baseline for this viewport. This is a public-record comparison, not a physical-device status claim.</p>
+                </div>
+              )}
               {selected.vendorEvidence && (
                 <div className={`vendor-note ${selected.vendorEvidence.strength}`}>
                   <strong>VENDOR CLAIM / OSM</strong>
@@ -561,7 +749,7 @@ export default function App() {
       </main>
 
       <footer>
-        <span>PEEKABOO v0.5</span>
+        <span>PEEKABOO v0.6</span>
         <span>PUBLIC DATA • NO LIVE FEEDS • NO DEVICE DISCOVERY</span>
         <span>DATA © OPENSTREETMAP CONTRIBUTORS</span>
       </footer>
