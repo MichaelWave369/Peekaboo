@@ -1,4 +1,18 @@
+import { publicCamEvidence, publicCamKind } from './publicCam.js'
+
 export const CONTEXT_META = {
+  webcam: {
+    label: 'Public live cam',
+    shortLabel: 'Live cams',
+    glyph: '▶',
+    description: 'OSM explicitly publishes a public webcam URL using contact:webcam.',
+  },
+  weather: {
+    label: 'Weather / conditions cam',
+    shortLabel: 'Weather',
+    glyph: '☁',
+    description: 'A public webcam whose OSM description/name suggests weather or current-conditions use.',
+  },
   public: {
     label: 'Public space',
     shortLabel: 'Public',
@@ -32,6 +46,15 @@ export function contextEvidence(tags = {}) {
   const leisure = normalized(tags.leisure)
   const landuse = normalized(tags.landuse)
   const location = normalized(tags.location)
+  const webcam = publicCamEvidence(tags)
+
+  if (webcam) {
+    result.webcam = evidence('explicit', 'Explicit OSM public-webcam link', webcam.basis)
+    const kind = publicCamKind(tags)
+    if (kind?.key === 'weather') {
+      result.weather = evidence('textual', 'Public webcam described as weather / conditions', 'contact:webcam plus OSM name/description context')
+    }
+  }
 
   if (surveillance === 'public') {
     result.public = evidence('explicit', 'Explicit OSM public-surveillance claim', 'surveillance=public')
