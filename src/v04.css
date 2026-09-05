@@ -1,0 +1,106 @@
+.record-search {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #26323a;
+}
+
+.record-search > span {
+  color: #6f858e;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.record-search input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #34434b;
+  background: #0b1117;
+  color: #dce7ea;
+  padding: 8px 10px;
+  font-size: 11px;
+}
+
+.record-search input::placeholder { color: #566a73; }
+.record-search input:focus { border-color: #c7f56b; }
+.search-summary { margin-top: 7px; color: #80939b; font-size: 9px; text-align: right; }
+
+.age-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.age-grid > div {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #26323a;
+  background: #0b1117;
+}
+
+.age-grid span {
+  display: block;
+  color: #6f858e;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.age-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.age-grid .current strong { color: #c7f56b; }
+.age-grid .aging strong { color: #ead48b; }
+.age-grid .stale strong { color: #ff9b83; }
+.age-grid .unknown strong { color: #8ba0a8; }
+
+.tool-buttons.four {
+  grid-template-columns: 1fr 1fr;
+}
+
+.record-age-note {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 15px;
+  padding: 11px;
+  border: 1px solid #34434b;
+  background: #0b1117;
+}
+
+.record-age-note > strong {
+  color: #7d929b;
+  font-size: 8px;
+  letter-spacing: .14em;
+}
+
+.record-age-note > span {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.record-age-note p {
+  margin: 2px 0 0;
+  color: #768a93;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.record-age-note.current { border-color: #52723a; }
+.record-age-note.current > span { color: #c7f56b; }
+.record-age-note.aging { border-color: #76642e; }
+.record-age-note.aging > span { color: #ead48b; }
+.record-age-note.stale { border-color: #76473c; }
+.record-age-note.stale > span { color: #ff9b83; }
+.record-age-note.unknown > span { color: #91a4ab; }
+
+@media (max-width: 720px) {
+  .age-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .age-grid > div { padding: 7px 5px; }
+  .age-grid span { font-size: 7px; }
+}
