@@ -48,14 +48,14 @@ export default function AddressSearch({ onNavigate, disabled = false }) {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="address, city, landmark…"
+          placeholder="Search address, city, or landmark"
           autoComplete="off"
           spellCheck="false"
           aria-label="Search for an address or place"
           disabled={disabled || loading}
         />
         <button type="submit" disabled={disabled || loading || query.trim().length < 2}>
-          {loading ? 'SEARCHING…' : 'FIND'}
+          {loading ? 'SEARCHING…' : 'SEARCH'}
         </button>
       </form>
       {status && <div className="address-search-status" aria-live="polite">{status}</div>}
