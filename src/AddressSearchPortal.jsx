@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AddressSearch from './AddressSearch.jsx'
 
-const RELEASE_LABEL = 'PEEKABOO v1.0'
+const RELEASE_LABEL = 'PEEKABOO v1.1'
 
 function zoomForPlace(place) {
   if (!place?.bounds) return 16
