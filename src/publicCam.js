@@ -1,3 +1,5 @@
+import { providerFallbackFor, publicCamProvider } from './publicCamProviders.js'
+
 const MAX_URL_LENGTH = 2048
 
 function normalized(value) {
@@ -65,6 +67,11 @@ export function publicCamEvidence(tags = {}) {
   let hostname = ''
   try { hostname = new URL(url).hostname } catch { hostname = '' }
 
+  const provider = publicCamProvider(url)
+  const providerFallback = providerFallbackFor(url)
+  const kind = mediaKind(url)
+  const inlineEligible = !providerFallback && url.startsWith('https://') && ['image', 'video', 'hls'].includes(kind)
+
   return {
     matched: true,
     strength: 'explicit',
@@ -72,8 +79,13 @@ export function publicCamEvidence(tags = {}) {
     basis: `contact:webcam=${raw}`,
     url,
     hostname,
-    mediaKind: mediaKind(url),
-    inlineEligible: url.startsWith('https://') && ['image', 'video', 'hls'].includes(mediaKind(url)),
+    mediaKind: kind,
+    inlineEligible,
+    reachability: 'unverified',
+    provider,
+    providerFallback,
+    recommendedUrl: providerFallback?.url || provider?.recommendedUrl || url,
+    actionKind: providerFallback ? 'official-directory-fallback' : 'published-link',
   }
 }
 
@@ -119,13 +131,14 @@ export function publicCamKind(tags = {}) {
 }
 
 export function publicCamSummary(items = []) {
-  const counts = { total: 0, inlineEligible: 0, image: 0, video: 0, hls: 0, page: 0 }
+  const counts = { total: 0, inlineEligible: 0, image: 0, video: 0, hls: 0, page: 0, providerFallback: 0 }
   items.forEach((item) => {
     const evidence = publicCamEvidence(item?.tags || {})
     if (!evidence) return
     counts.total += 1
     counts[evidence.mediaKind] = (counts[evidence.mediaKind] || 0) + 1
     if (evidence.inlineEligible) counts.inlineEligible += 1
+    if (evidence.providerFallback) counts.providerFallback += 1
   })
   return counts
 }
