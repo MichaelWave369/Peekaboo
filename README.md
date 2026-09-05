@@ -19,7 +19,32 @@ Peekaboo is a public-data map for exploring surveillance infrastructure voluntar
 
 Peekaboo does **not** discover cameras, probe devices, access live feeds, identify surveillance blind spots, or claim that an unmapped area has no surveillance. It only visualizes data already published in OpenStreetMap.
 
-## v0.5 features
+## v0.6 features
+
+### Viewport-bound OSM change ledger
+
+Peekaboo can now save a local baseline for a scanned viewport and compare later scans of that **same query area** against it.
+
+- `NEWLY MAPPED` means an OSM record ID is present now but was not present in the saved baseline.
+- `REMOVED FROM OSM` means a baseline OSM record ID is no longer present in the current result set.
+- `METADATA CHANGED` means the same OSM object has a different semantic comparison fingerprint, such as operator, model, vendor evidence, classification, direction, geometry or raw tag changes.
+- `UNCHANGED` means the normalized OSM record payload matches the saved baseline.
+- Peekaboo refuses to infer change when baseline and current viewport fingerprints differ.
+- Removed records are counted and exported, but are not rendered as ghost devices on the live map.
+- Added/changed current records receive subtle map-ring indicators and per-object change receipts.
+
+The change ledger compares **public OSM records**, not physical hardware. An added record does not independently prove installation; a removed record does not independently prove removal; and metadata edits do not establish device activity or status.
+
+### Portable, tamper-checked snapshots
+
+- Baselines are stored locally in the browser and are not uploaded by Peekaboo.
+- Snapshots can be exported as JSON and imported later for the same viewport.
+- Snapshot records use deterministic semantic fingerprints plus a dataset fingerprint.
+- Imported snapshots are validated for generator, schema, record count, duplicate IDs, coordinates and fingerprint integrity before use.
+- Snapshot imports are size-bounded in the browser.
+- The comparison fingerprint is deterministic but is intended for reproducibility/tamper detection, not cryptographic authentication.
+- Source revision metadata such as OSM version/timestamp alone does not fabricate a semantic change when the mapped semantic payload is unchanged.
+- Change reports can be exported as JSON with baseline/current fingerprints, query metadata and explicit uncertainty language.
 
 ### Dense-map rendering
 
@@ -30,7 +55,7 @@ Peekaboo does **not** discover cameras, probe devices, access live feeds, identi
 
 ### Metadata detail diagnostics
 
-Peekaboo now computes a **metadata detail score** for each loaded record based on descriptive fields such as source identity, classification, timestamp, zone, operator, camera type, direction, manufacturer and model.
+Peekaboo computes a **metadata detail score** for each loaded record based on descriptive fields such as source identity, classification, timestamp, zone, operator, camera type, direction, manufacturer and model.
 
 - The score measures metadata completeness only.
 - It is explicitly labeled **NOT TRUTH SCORE** in the interface.
@@ -51,6 +76,7 @@ Peekaboo now computes a **metadata detail score** for each loaded record based o
 - Browser online/offline state is surfaced in the interface.
 - Superseded requests are aborted, including cleanup when the app unmounts.
 - A top-level React error boundary fails into a recovery screen rather than leaving a partially rendered map that appears trustworthy.
+- Baseline storage/import errors are contained and surfaced instead of silently corrupting comparison state.
 
 ### Search and auditability
 
@@ -98,7 +124,9 @@ Peekaboo treats mapped Flock Safety ALPR devices as a first-class category while
 - One-click copyable view links.
 - GeoJSON export of the currently visible loaded records.
 - CSV export with spreadsheet-formula injection neutralization for untrusted public text fields.
-- JSON manifest export containing schema version, source endpoint, query metadata, category counts, OSM record-age summary, metadata-detail diagnostics and co-location diagnostics.
+- JSON manifest export containing schema version, source endpoint, query metadata, category counts, OSM record-age summary, metadata-detail diagnostics, co-location diagnostics and change-ledger summary when a compatible baseline exists.
+- Portable JSON snapshot export/import for same-viewport comparisons.
+- JSON change-report export with added, removed and changed OSM records.
 - GeoJSON includes manufacturer/model/vendor-evidence fields when available.
 - Export metadata explicitly states that vendor identity is an OSM claim and missing OSM records do not imply absence of surveillance.
 
@@ -109,6 +137,7 @@ Peekaboo treats mapped Flock Safety ALPR devices as a first-class category while
 - No live-feed access or device discovery.
 - No routing around surveillance or blind-spot inference.
 - No automatic deletion or merging of suspected duplicate records.
+- No cross-viewport change inference.
 - Responsive desktop/mobile UI.
 
 ## Run locally
@@ -153,7 +182,8 @@ OpenStreetMap contributors
         ├── metadata-detail diagnostics
         ├── bounded co-location diagnostics
         ├── loaded-record search
-        └── GeoJSON / CSV / manifest exports
+        ├── viewport-bound change snapshots
+        └── GeoJSON / CSV / manifest / change exports
         │
         ▼
  deterministic display clustering
@@ -163,6 +193,21 @@ OpenStreetMap contributors
 ```
 
 The Overpass query includes objects with either `man_made=surveillance` or a `surveillance:type=*` tag and requests metadata plus centers for mapped ways/relations.
+
+## Change-ledger policy
+
+Peekaboo deliberately treats source change and physical-world change as different claims.
+
+A baseline is tied to the exact stored viewport fingerprint. A later scan is comparable only when its viewport fingerprint matches. The comparison key is the OSM object ID; semantic fingerprints then detect normalized/tag/geometry changes for records that persist across snapshots.
+
+The following inferences are intentionally **not** made:
+
+- `NEW OSM RECORD` ≠ independently verified new physical camera.
+- `REMOVED FROM OSM` ≠ independently verified removed physical camera.
+- `METADATA CHANGED` ≠ independently verified hardware modification.
+- `UNCHANGED` ≠ proof the physical device remains present or active.
+
+This keeps the ledger useful for public-data research without laundering map edits into claims about the real world.
 
 ## Flock identification policy
 
@@ -174,7 +219,7 @@ Peekaboo deliberately separates three claims that are often blurred together:
 
 Only records that satisfy both the Flock-vendor claim and the ALPR/Falcon condition enter the dedicated **Flock Safety ALPR** layer. A Flock manufacturer tag by itself is not enough to label an arbitrary surveillance device as an ALPR.
 
-OSM data can be incomplete, outdated, disputed or incorrectly tagged. Peekaboo therefore exposes the original object, changeset, raw tags, record age and descriptive-metadata gaps so users can inspect the evidence rather than treating the rendered marker as an independently verified fact.
+OSM data can be incomplete, outdated, disputed or incorrectly tagged. Peekaboo therefore exposes the original object, changeset, raw tags, record age, descriptive-metadata gaps and change-ledger status so users can inspect the evidence rather than treating the rendered marker as an independently verified fact.
 
 ## Mapping signal and diagnostics
 
@@ -184,6 +229,7 @@ The **Mapping Signal** panel intentionally does not call itself "coverage confid
 - **Tag detail**: how often loaded objects contain descriptive fields such as zone, operator, camera type and direction.
 - **Metadata detail score**: descriptive-field completeness, not claim truthfulness.
 - **Co-located candidates**: nearby mapped records, not automatically duplicate devices.
+- **Change ledger**: differences between two same-viewport OSM snapshots, not independently verified physical changes.
 
 When the map moves after a scan, Peekaboo keeps the previous data visible but marks it stale relative to the current viewport until the user rescans.
 
