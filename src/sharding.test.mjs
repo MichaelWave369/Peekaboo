@@ -62,6 +62,8 @@ test('only congestion-like failures are candidates for sharding', () => {
   assert.equal(isShardableOverpassFailure('request timed out'), true)
   assert.equal(isShardableOverpassFailure('HTTP 504'), true)
   assert.equal(isShardableOverpassFailure('Overpass remark: runtime error: Query timed out'), true)
+  assert.equal(isShardableOverpassFailure('HTTP 429'), false)
+  assert.equal(isShardableOverpassFailure('too many requests'), false)
   assert.equal(isShardableOverpassFailure('invalid JSON response'), false)
   assert.equal(isShardableOverpassFailure('HTTP 400'), false)
 })
