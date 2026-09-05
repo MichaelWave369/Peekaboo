@@ -11,6 +11,17 @@
   background: #edf9ff;
   color: #276f90;
 }
+.map-filter-chips .live-cam-chip.stale,
+.map-filter-chips .weather-cam-chip.stale {
+  border-color: #a67d2f;
+  background: #fff8e8;
+  color: #76561c;
+}
+.map-filter-chips .live-cam-chip.stale strong,
+.map-filter-chips .weather-cam-chip.stale strong {
+  color: #9a6b17;
+  font-size: 7px;
+}
 
 .context-webcam { color: #b89bff; }
 .context-weather { color: #78d7ff; }
@@ -18,6 +29,39 @@
    webcam viewer below owns webcam/weather provenance so stale park copy never appears. */
 .context-note.context-webcam,
 .context-note.context-weather { display: none; }
+
+.cam-rescan-notice {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #7d622d;
+  border-radius: 8px;
+  background: #211b0f;
+  color: #bcae8b;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.cam-rescan-notice strong,
+.cam-rescan-notice span { display: block; }
+.cam-rescan-notice strong {
+  color: #f0cf77;
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+.cam-rescan-notice span { margin-top: 5px; }
+.cam-rescan-notice button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  border: 1px solid #9b782f;
+  border-radius: 7px;
+  background: #d2a947;
+  color: #18130a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.cam-rescan-notice button:hover { filter: brightness(1.06); }
 
 .public-cam-card {
   margin: -6px 0 18px;
@@ -139,7 +183,8 @@
 @media (pointer: coarse) {
   .public-cam-load,
   .public-cam-media button,
-  .public-cam-open { min-height: 44px; }
+  .public-cam-open,
+  .cam-rescan-notice button { min-height: 44px; }
 }
 
 @media (max-width: 560px) {
