@@ -1,3 +1,4 @@
+import { createEndpointHealthManager } from './endpointHealth.js'
 import {
   boundsAdapter,
   combineCompleteShardResults,
@@ -10,14 +11,16 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.kumi.systems/api/interpreter',
 ]
 
-export const DATA_SCHEMA_VERSION = '0.5'
-const CACHE_PREFIX = 'peekaboo:overpass:v5:'
+export const DATA_SCHEMA_VERSION = '0.6'
+const CACHE_PREFIX = 'peekaboo:overpass:v6:'
 const CACHE_TTL_MS = 5 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 22 * 1000
 const MAX_RENDER_OBJECTS = 6000
+const MAX_SCAN_NETWORK_ATTEMPTS = 10
 const FLOCK_WIKIDATA = 'Q108485435'
 const DAY_MS = 24 * 60 * 60 * 1000
 const SHARD_DELAY_MS = 650
+const endpointHealth = createEndpointHealthManager()
 
 export const CATEGORY_META = {
   flock: { label: 'Flock Safety ALPR', glyph: 'F' },
@@ -194,13 +197,22 @@ export function buildOverpassQuery(bounds) {
   return `[out:json][timeout:20];\n(\n  nwr[\"man_made\"=\"surveillance\"](${bbox});\n  nwr[\"surveillance:type\"](${bbox});\n);\nout meta center;`
 }
 
+function storage() {
+  try {
+    return globalThis.sessionStorage || null
+  } catch {
+    return null
+  }
+}
+
 function readCache(key) {
   try {
-    const raw = sessionStorage.getItem(CACHE_PREFIX + key)
+    const store = storage()
+    const raw = store?.getItem(CACHE_PREFIX + key)
     if (!raw) return null
     const cached = JSON.parse(raw)
     if (!cached?.savedAt || Date.now() - cached.savedAt > CACHE_TTL_MS) {
-      sessionStorage.removeItem(CACHE_PREFIX + key)
+      store?.removeItem(CACHE_PREFIX + key)
       return null
     }
     return cached
@@ -211,7 +223,7 @@ function readCache(key) {
 
 function writeCache(key, value) {
   try {
-    sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ...value, savedAt: Date.now() }))
+    storage()?.setItem(CACHE_PREFIX + key, JSON.stringify({ ...value, savedAt: Date.now() }))
   } catch {
     // Storage can be unavailable in privacy modes. Caching is optional.
   }
@@ -233,6 +245,25 @@ function abortableDelay(ms, signal) {
   })
 }
 
+function budgetSnapshot(budget) {
+  return {
+    limit: budget.limit,
+    used: budget.used,
+    remaining: Math.max(0, budget.limit - budget.used),
+  }
+}
+
+function endpointSnapshot() {
+  return endpointHealth.snapshot(OVERPASS_ENDPOINTS)
+}
+
+function makeTransportError(message, code, details = {}) {
+  const error = new Error(message)
+  error.code = code
+  Object.assign(error, details)
+  return error
+}
+
 async function requestEndpoint(url, body, externalSignal) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
@@ -247,7 +278,12 @@ async function requestEndpoint(url, body, externalSignal) {
       signal: controller.signal,
     })
 
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    if (!response.ok) {
+      const error = new Error(`HTTP ${response.status}`)
+      error.status = response.status
+      error.retryAfter = response.headers?.get?.('Retry-After') || null
+      throw error
+    }
 
     let json
     try {
@@ -272,8 +308,12 @@ async function requestEndpoint(url, body, externalSignal) {
   }
 }
 
-export async function fetchSurveillanceSingle(bounds, signal, { force = false } = {}) {
+export async function fetchSurveillanceSingle(bounds, signal, options = {}) {
+  const force = Boolean(options.force)
+  const allowSoftCooldown = Boolean(options.allowSoftCooldown)
+  const budget = options.budget || { limit: MAX_SCAN_NETWORK_ATTEMPTS, used: 0 }
   const fingerprint = boundsFingerprint(bounds)
+
   if (!force) {
     const cached = readCache(fingerprint)
     if (cached?.items) {
@@ -284,7 +324,11 @@ export async function fetchSurveillanceSingle(bounds, signal, { force = false } 
         fetchedAt: cached.fetchedAt || cached.savedAt,
         fingerprint,
         attempts: 0,
+        networkAttemptsThisLoad: 0,
         failures: cached.failures || [],
+        skippedEndpoints: cached.skippedEndpoints || [],
+        endpointHealth: endpointSnapshot(),
+        requestBudget: cached.requestBudget || budgetSnapshot(budget),
         scanMode: cached.scanMode || 'single',
         shardCount: cached.shardCount || 1,
         shardDetails: cached.shardDetails || [],
@@ -296,73 +340,135 @@ export async function fetchSurveillanceSingle(bounds, signal, { force = false } 
   const query = buildOverpassQuery(bounds)
   const body = new URLSearchParams({ data: query })
   const errors = []
+  const skippedEndpoints = []
+  let networkAttempts = 0
 
   for (let index = 0; index < OVERPASS_ENDPOINTS.length; index += 1) {
     const endpoint = OVERPASS_ENDPOINTS[index]
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-    if (index > 0) await abortableDelay(Math.min(400 * index, 1200), signal)
 
-    try {
-      const json = await requestEndpoint(endpoint, body, signal)
-      const seen = new Set()
-      const items = (json.elements || [])
-        .map(normalizeElement)
-        .filter(Boolean)
-        .filter((item) => {
-          if (seen.has(item.id)) return false
-          seen.add(item.id)
-          return true
-        })
-
-      if (items.length > MAX_RENDER_OBJECTS) {
-        throw new Error(`result set contains ${items.length.toLocaleString()} objects; zoom in to keep browser rendering bounded`)
-      }
-
-      const result = {
-        items,
+    const health = endpointHealth.canTry(endpoint, { allowSoftCooldown })
+    if (!health.allowed) {
+      skippedEndpoints.push({
         endpoint,
-        cached: false,
-        fetchedAt: Date.now(),
-        fingerprint,
-        attempts: errors.length + 1,
-        failures: [...errors],
-        scanMode: 'single',
-        shardCount: 1,
-        shardDetails: [],
-        fallbackReason: null,
-      }
-      writeCache(fingerprint, result)
-      return result
+        host: new URL(endpoint).hostname,
+        cooldownKind: health.state.cooldownKind,
+        remainingMs: health.remainingMs,
+        lastStatus: health.state.lastStatus,
+        lastError: health.state.lastError,
+      })
+      continue
+    }
+
+    if (budget.used >= budget.limit) {
+      throw makeTransportError(
+        `Scan request budget exhausted at ${budget.used}/${budget.limit} network requests. No additional public API requests were sent.`,
+        'REQUEST_BUDGET_EXHAUSTED',
+        { skippedEndpoints, endpointHealth: endpointSnapshot(), requestBudget: budgetSnapshot(budget) },
+      )
+    }
+
+    if (networkAttempts > 0) await abortableDelay(Math.min(400 * networkAttempts, 1200), signal)
+    budget.used += 1
+    networkAttempts += 1
+
+    let json
+    try {
+      json = await requestEndpoint(endpoint, body, signal)
+      endpointHealth.recordSuccess(endpoint)
     } catch (error) {
       if (error.name === 'AbortError') throw error
+      endpointHealth.recordFailure(endpoint, {
+        status: error.status,
+        retryAfter: error.retryAfter,
+        message: error.message,
+      })
       errors.push(`${new URL(endpoint).hostname}: ${error.message}`)
+      continue
     }
+
+    const seen = new Set()
+    const items = (json.elements || [])
+      .map(normalizeElement)
+      .filter(Boolean)
+      .filter((item) => {
+        if (seen.has(item.id)) return false
+        seen.add(item.id)
+        return true
+      })
+
+    if (items.length > MAX_RENDER_OBJECTS) {
+      throw makeTransportError(
+        `Result set contains ${items.length.toLocaleString()} objects; zoom in to keep browser rendering bounded.`,
+        'RESULT_TOO_LARGE',
+        { endpointHealth: endpointSnapshot(), requestBudget: budgetSnapshot(budget) },
+      )
+    }
+
+    const result = {
+      items,
+      endpoint,
+      cached: false,
+      fetchedAt: Date.now(),
+      fingerprint,
+      attempts: networkAttempts,
+      networkAttemptsThisLoad: networkAttempts,
+      failures: [...errors],
+      skippedEndpoints,
+      endpointHealth: endpointSnapshot(),
+      requestBudget: budgetSnapshot(budget),
+      scanMode: 'single',
+      shardCount: 1,
+      shardDetails: [],
+      fallbackReason: null,
+    }
+    writeCache(fingerprint, result)
+    return result
   }
 
-  throw new Error(`All Overpass endpoints failed. ${errors.join(' • ')}`)
+  if (!networkAttempts && skippedEndpoints.length) {
+    const minimum = Math.min(...skippedEndpoints.map((entry) => Number(entry.remainingMs) || Infinity))
+    const retrySeconds = Number.isFinite(minimum) ? Math.max(1, Math.ceil(minimum / 1000)) : null
+    throw makeTransportError(
+      `All Overpass endpoints are cooling down. No network request was made.${retrySeconds ? ` Retry in about ${retrySeconds}s.` : ''}`,
+      'ENDPOINT_COOLDOWN',
+      { skippedEndpoints, endpointHealth: endpointSnapshot(), requestBudget: budgetSnapshot(budget) },
+    )
+  }
+
+  throw makeTransportError(
+    `All Overpass endpoints failed. ${errors.join(' • ')}`,
+    'OVERPASS_FAILED',
+    { skippedEndpoints, endpointHealth: endpointSnapshot(), requestBudget: budgetSnapshot(budget) },
+  )
 }
 
 export async function fetchSurveillance(bounds, signal, { force = false } = {}) {
   const fingerprint = boundsFingerprint(bounds)
+  const budget = { limit: MAX_SCAN_NETWORK_ATTEMPTS, used: 0 }
 
   try {
-    const result = await fetchSurveillanceSingle(bounds, signal, { force })
+    const result = await fetchSurveillanceSingle(bounds, signal, { force, budget })
     return {
       ...result,
       scanMode: result.scanMode || 'single',
       shardCount: result.shardCount || 1,
       shardDetails: result.shardDetails || [],
       fallbackReason: result.fallbackReason || null,
+      requestBudget: result.requestBudget || budgetSnapshot(budget),
+      endpointHealth: result.endpointHealth || endpointSnapshot(),
     }
   } catch (error) {
     if (error.name === 'AbortError') throw error
+    if (['ENDPOINT_COOLDOWN', 'REQUEST_BUDGET_EXHAUSTED', 'RESULT_TOO_LARGE'].includes(error.code)) throw error
+
     const reason = error.message || 'Unknown Overpass failure.'
     if (!isShardableOverpassFailure(reason)) throw error
 
     const shards = splitBoundsIntoQuadrants(bounds)
     const completed = []
     const allFailures = [`FULL VIEW: ${reason}`]
-    let attempts = OVERPASS_ENDPOINTS.length
+    const allSkipped = [...(error.skippedEndpoints || [])]
 
     for (let index = 0; index < shards.length; index += 1) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -370,9 +476,13 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
       const shard = shards[index]
 
       try {
-        const result = await fetchSurveillanceSingle(boundsAdapter(shard), signal, { force })
-        attempts += Number(result.attempts || 0)
+        const result = await fetchSurveillanceSingle(boundsAdapter(shard), signal, {
+          force,
+          budget,
+          allowSoftCooldown: true,
+        })
         result.failures?.forEach((failure) => allFailures.push(`${shard.id}: ${failure}`))
+        result.skippedEndpoints?.forEach((skipped) => allSkipped.push({ ...skipped, shard: shard.id }))
         completed.push({
           id: shard.id,
           complete: true,
@@ -384,7 +494,15 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
         })
       } catch (shardError) {
         if (shardError.name === 'AbortError') throw shardError
-        throw new Error(`Adaptive scan aborted: shard ${shard.id} failed. No partial results were accepted. ${shardError.message || shardError}`)
+        throw makeTransportError(
+          `Adaptive scan aborted: shard ${shard.id} failed. No partial results were accepted. ${shardError.message || shardError}`,
+          'SHARD_INCOMPLETE',
+          {
+            endpointHealth: endpointSnapshot(),
+            requestBudget: budgetSnapshot(budget),
+            skippedEndpoints: [...allSkipped, ...(shardError.skippedEndpoints || [])],
+          },
+        )
       }
     }
 
@@ -397,8 +515,12 @@ export async function fetchSurveillance(bounds, signal, { force = false } = {}) 
       cached: completed.every((entry) => entry.cached),
       fetchedAt: timestamps.length ? Math.max(...timestamps) : Date.now(),
       fingerprint,
-      attempts,
+      attempts: budget.used,
+      networkAttemptsThisLoad: budget.used,
       failures: allFailures,
+      skippedEndpoints: allSkipped,
+      endpointHealth: endpointSnapshot(),
+      requestBudget: budgetSnapshot(budget),
       scanMode: 'sharded',
       shardCount: completed.length,
       shardDetails: completed.map(({ id, endpoint, cached, attempts: shardAttempts }) => ({
@@ -536,7 +658,11 @@ export function buildManifest(items, query = {}) {
       fingerprint: query.fingerprint || null,
       cached: Boolean(query.cached),
       attempts: query.attempts ?? null,
+      networkAttemptsThisLoad: query.networkAttemptsThisLoad ?? null,
       failures: query.failures || [],
+      skippedEndpoints: query.skippedEndpoints || [],
+      endpointHealth: query.endpointHealth || [],
+      requestBudget: query.requestBudget || null,
       durationMs: query.durationMs ?? null,
       loadedAreaKm2: query.loadedAreaKm2 ?? null,
       scanMode: query.scanMode || 'single',
@@ -544,6 +670,7 @@ export function buildManifest(items, query = {}) {
       shardDetails: query.shardDetails || [],
       fallbackReason: query.fallbackReason || null,
       completenessPolicy: 'Sharded fallback is all-or-nothing. Partial shard results are rejected.',
+      requestPolicy: 'Rate limits and explicit Retry-After cooldowns are respected. A user scan is capped at 10 network requests including adaptive shards.',
     },
   }
 }
