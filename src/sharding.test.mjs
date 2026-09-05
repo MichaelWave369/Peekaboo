@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   boundsAdapter,
+  canonicalRecordString,
   combineCompleteShardResults,
   isShardableOverpassFailure,
   plainBounds,
@@ -22,16 +23,59 @@ test('plain bounds accepts Leaflet-like or plain objects', () => {
   assert.deepEqual(plainBounds(boundsAdapter({ south: 1, west: 2, north: 3, east: 4 })), { south: 1, west: 2, north: 3, east: 4 })
 })
 
-test('shard combiner deduplicates records on shared boundaries', () => {
-  const a = { id: 'node/1' }
+test('canonical record comparison ignores object key order', () => {
+  const a = { id: 'node/1', tags: { z: 'last', a: 'first' }, vendorEvidence: { strength: 'explicit', matched: true } }
+  const b = { vendorEvidence: { matched: true, strength: 'explicit' }, tags: { a: 'first', z: 'last' }, id: 'node/1' }
+  assert.equal(canonicalRecordString(a), canonicalRecordString(b))
+})
+
+test('shard combiner deduplicates identical records on shared boundaries', () => {
+  const a = { id: 'node/1', version: 2, tags: { camera: 'yes', operator: 'Example' } }
+  const sameAWithDifferentKeyOrder = { tags: { operator: 'Example', camera: 'yes' }, version: 2, id: 'node/1' }
   const b = { id: 'node/2' }
   const items = combineCompleteShardResults([
-    { complete: true, items: [a] },
-    { complete: true, items: [a, b] },
-    { complete: true, items: [] },
-    { complete: true, items: [] },
+    { id: 'NW', complete: true, items: [a] },
+    { id: 'NE', complete: true, items: [sameAWithDifferentKeyOrder, b] },
+    { id: 'SW', complete: true, items: [] },
+    { id: 'SE', complete: true, items: [] },
   ])
   assert.deepEqual(items.map((item) => item.id), ['node/1', 'node/2'])
+})
+
+test('shard combiner fails closed when overlapping shards disagree about one OSM object', () => {
+  const before = {
+    id: 'node/42',
+    version: 7,
+    timestamp: '2026-09-05T20:00:00Z',
+    changeset: 100,
+    lat: 38.5,
+    lon: -121.5,
+    tags: { operator: 'Agency A', camera: 'yes' },
+  }
+  const after = {
+    ...before,
+    version: 8,
+    timestamp: '2026-09-05T20:01:00Z',
+    changeset: 101,
+    tags: { operator: 'Agency B', camera: 'yes' },
+  }
+
+  assert.throws(
+    () => combineCompleteShardResults([
+      { id: 'NW', complete: true, items: [before] },
+      { id: 'NE', complete: true, items: [after] },
+      { id: 'SW', complete: true, items: [] },
+      { id: 'SE', complete: true, items: [] },
+    ]),
+    (error) => {
+      assert.equal(error.code, 'SHARD_CONSISTENCY_CONFLICT')
+      assert.equal(error.conflict.id, 'node/42')
+      assert.equal(error.conflict.first.shard, 'NW')
+      assert.equal(error.conflict.second.shard, 'NE')
+      assert.match(error.message, /No merged dataset was accepted/i)
+      return true
+    },
+  )
 })
 
 test('shard combiner refuses partial scans', () => {
