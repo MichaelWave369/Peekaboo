@@ -1,0 +1,58 @@
+.record-search { display: grid; gap: 6px; margin-top: 14px; }
+.record-search > span { color: #6f858e; font-size: 8px; font-weight: 800; letter-spacing: .13em; }
+.record-search input { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid #34434b; background: #080d12; color: #dce7ea; font-size: 10px; }
+.record-search input::placeholder { color: #53666e; }
+.search-summary { margin-top: 6px; color: #81949b; font-size: 9px; }
+
+.age-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.age-grid > div { padding: 9px; border: 1px solid #26323a; background: #0b1117; }
+.age-grid span { display: block; color: #71858d; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.age-grid strong { display: block; margin-top: 3px; color: #dce7ea; font-size: 13px; }
+.age-grid .aging { border-color: #625b35; }
+.age-grid .stale { border-color: #69414a; }
+.age-grid .unknown { border-color: #3f4358; }
+
+.render-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding: 8px 9px; border: 1px solid #26323a; background: #0b1117; font-size: 8px; letter-spacing: .08em; }
+.render-status span { color: #687d85; }
+.render-status strong { color: #c7f56b; }
+
+.map-cluster { width: 100%; height: 100%; display: grid; place-items: center; border: 2px solid #c7f56b; border-radius: 50%; background: rgba(8, 11, 16, .94); color: #c7f56b; box-shadow: 0 0 0 4px rgba(199,245,107,.08), 0 8px 20px rgba(0,0,0,.48); font-size: 10px; transition: transform .15s ease, box-shadow .15s ease; }
+.map-cluster:hover { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(199,245,107,.1), 0 8px 22px rgba(0,0,0,.55); }
+.map-cluster strong { font-variant-numeric: tabular-nums; }
+
+.metadata-note, .proximity-note, .record-age-note { margin: -6px 0 18px; padding: 11px; border: 1px solid #34434b; background: #0d1319; color: #a9b7bc; font-size: 10px; line-height: 1.45; }
+.metadata-note strong, .metadata-note span, .proximity-note strong, .proximity-note span, .record-age-note strong, .record-age-note span { display: block; }
+.metadata-note strong, .proximity-note strong, .record-age-note strong { font-size: 8px; letter-spacing: .14em; }
+.metadata-note span, .proximity-note span, .record-age-note span { margin-top: 5px; color: #e0e8ea; font-weight: 700; }
+.metadata-note p, .proximity-note p, .record-age-note p { margin: 7px 0 0; color: #74878f; }
+.metadata-note.high { border-color: #52723a; background: #111b13; }
+.metadata-note.high strong { color: #c7f56b; }
+.metadata-note.medium { border-color: #76642e; background: #1b1810; }
+.metadata-note.medium strong { color: #ead48b; }
+.metadata-note.low { border-color: #6f3d46; background: #1d1216; }
+.metadata-note.low strong { color: #ffadb8; }
+.proximity-note { border-color: #6a5630; background: #1b1710; }
+.proximity-note strong { color: #ffcf70; }
+.record-age-note.current strong { color: #c7f56b; }
+.record-age-note.aging strong { color: #ead48b; }
+.record-age-note.stale strong { color: #ff9da8; }
+.record-age-note.unknown strong { color: #af9bff; }
+
+.error-box { display: grid; gap: 6px; }
+.error-box strong { font-size: 8px; letter-spacing: .13em; }
+.error-box span, .error-box small { display: block; }
+.error-box small { color: #c68e97; }
+.error-box button { margin-top: 3px; padding: 7px 8px; border: 1px solid #8f535d; background: transparent; color: #ffadb8; font-size: 8px; font-weight: 800; letter-spacing: .09em; cursor: pointer; }
+.error-box button:disabled { opacity: .45; cursor: not-allowed; }
+
+.tool-buttons.four { grid-template-columns: 1fr 1fr; }
+
+.fatal-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #080b10; color: #dce7ea; }
+.fatal-card { width: min(560px, 100%); padding: 24px; border: 1px solid #6f3d46; background: #10171e; }
+.fatal-card h1 { margin: 0 0 10px; font-size: 22px; letter-spacing: .1em; }
+.fatal-card p { color: #98a8af; line-height: 1.55; }
+.fatal-card button { margin-top: 12px; padding: 10px 13px; border: 1px solid #c7f56b; background: #c7f56b; color: #0b0f13; font-weight: 900; cursor: pointer; }
+
+@media (max-width: 720px) {
+  .map-cluster { font-size: 9px; }
+}
