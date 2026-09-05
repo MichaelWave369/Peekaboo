@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AddressSearch from './AddressSearch.jsx'
 
-const RELEASE_LABEL = 'PEEKABOO v0.9'
+const RELEASE_LABEL = 'PEEKABOO v1.0'
 
 function zoomForPlace(place) {
   if (!place?.bounds) return 16
@@ -36,22 +36,26 @@ function stampRelease() {
 
 export default function AddressSearchPortal() {
   const [host, setHost] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth > 860)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('peekaboo-sidebar-open', sidebarOpen)
+    return () => document.documentElement.classList.remove('peekaboo-sidebar-open')
+  }, [sidebarOpen])
 
   useEffect(() => {
     let createdHost = null
 
     const attach = () => {
       stampRelease()
-      const sidebar = document.querySelector('.sidebar')
-      if (!sidebar) return false
+      const mapStage = document.querySelector('.map-stage')
+      if (!mapStage) return false
 
       let target = document.getElementById('peekaboo-address-search-host')
       if (!target) {
         target = document.createElement('div')
         target.id = 'peekaboo-address-search-host'
-        const intro = sidebar.querySelector('.intro-panel')
-        if (intro?.nextSibling) sidebar.insertBefore(target, intro.nextSibling)
-        else sidebar.appendChild(target)
+        mapStage.appendChild(target)
         createdHost = target
       }
       setHost(target)
@@ -74,5 +78,21 @@ export default function AddressSearchPortal() {
   }, [])
 
   if (!host) return null
-  return createPortal(<AddressSearch onNavigate={navigateToPlace} />, host)
+  return createPortal(
+    <div className="v1-map-searchbar">
+      <button
+        type="button"
+        className="v1-menu-button"
+        aria-label={sidebarOpen ? 'Hide Peekaboo data panel' : 'Show Peekaboo data panel'}
+        aria-expanded={sidebarOpen}
+        onClick={() => setSidebarOpen((value) => !value)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+      <AddressSearch onNavigate={navigateToPlace} />
+    </div>,
+    host,
+  )
 }
