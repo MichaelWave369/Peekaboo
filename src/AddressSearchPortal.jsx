@@ -43,6 +43,15 @@ export default function AddressSearchPortal() {
   }, [sidebarOpen])
 
   useEffect(() => {
+    const onSetSidebar = (event) => {
+      if (event?.detail?.open === false) setSidebarOpen(false)
+      else setSidebarOpen(true)
+    }
+    window.addEventListener('peekaboo:set-sidebar', onSetSidebar)
+    return () => window.removeEventListener('peekaboo:set-sidebar', onSetSidebar)
+  }, [])
+
+  useEffect(() => {
     let createdHost = null
 
     const attach = () => {
