@@ -100,7 +100,7 @@ function writeCache(result) {
   try { storage()?.setItem(CACHE_KEY, JSON.stringify({ ...result, savedAt: Date.now() })) } catch { /* optional cache */ }
 }
 
-export async function fetchUsqsAshcam(signal, { force = false } = {}) {
+export async function fetchUsgsAshcam(signal, { force = false } = {}) {
   if (!force) {
     const cached = readCache()
     if (cached) return { ...cached, cached: true }
