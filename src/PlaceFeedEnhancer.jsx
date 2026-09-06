@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import { getPeekabooMap } from './leafletRegistry.js'
-import { PLACE_FEED_STATUS, placeFeedRegistry, visiblePlaceFeeds } from './placeFeeds.js'
+import { PLACE_FEED_STATUS, PLACE_PUBLISHER_CLASS, placeFeedRegistry, visiblePlaceFeeds } from './placeFeeds.js'
 
 const FEEDS = placeFeedRegistry()
 const MODE = {
   all: { label: 'PLACES', categories: null },
   wildlife: { label: 'WILDLIFE', categories: ['wildlife'] },
   aviation: { label: 'FAA WX', categories: ['aviation'] },
+  institution: { label: 'ZOO / AQUARIUM', categories: ['institution'] },
+  greatLakes: { label: 'GREAT LAKES', categories: ['great-lakes'] },
 }
 
 function feedsForMode(mode) {
@@ -16,12 +18,21 @@ function feedsForMode(mode) {
   return categories ? FEEDS.filter((feed) => categories.includes(feed.category)) : FEEDS
 }
 
+function publisherMeta(feed) {
+  const value = feed.publisherClass
+  if (value === 'government-official') return { eyebrow: 'OFFICIAL GOVERNMENT PLACE SOURCE', pill: 'government', label: PLACE_PUBLISHER_CLASS[value] }
+  if (value === 'institution-official') return { eyebrow: 'OFFICIAL INSTITUTION PLACE SOURCE', pill: 'institution', label: PLACE_PUBLISHER_CLASS[value] }
+  return { eyebrow: 'PUBLIC COMMERCIAL PLACE SOURCE', pill: 'commercial', label: PLACE_PUBLISHER_CLASS[value] || 'PUBLIC SOURCE' }
+}
+
 function icon(feed) {
   const letter = feed.category === 'park' ? 'N'
     : feed.category === 'city' ? 'C'
       : feed.category === 'wildlife' ? 'W'
         : feed.category === 'aviation' ? 'A'
-          : 'P'
+          : feed.category === 'institution' ? 'Z'
+            : feed.category === 'great-lakes' ? 'G'
+              : 'P'
   return L.divIcon({
     className: '',
     html: `<div class="place-feed-marker ${feed.publisherClass} ${feed.category}"><span>${letter}</span></div>`,
@@ -31,13 +42,13 @@ function icon(feed) {
 }
 
 function PlaceDrawer({ feed, onClose }) {
-  const official = feed.publisherClass === 'government-official'
+  const publisher = publisherMeta(feed)
   return (
     <aside className="detail-drawer place-feed-drawer open">
       <button className="close-button" onClick={onClose} aria-label="Close place feed">×</button>
-      <div className="eyebrow">{official ? 'OFFICIAL PUBLIC PLACE SOURCE' : 'PUBLIC COMMERCIAL PLACE SOURCE'}</div>
+      <div className="eyebrow">{publisher.eyebrow}</div>
       <h2>{feed.name}</h2>
-      <div className={`place-source-pill ${official ? 'official' : 'commercial'}`}>{PLACE_FEED_STATUS[feed.status]}</div>
+      <div className={`place-source-pill ${publisher.pill}`}>{PLACE_FEED_STATUS[feed.status]}</div>
       <div className="place-source-note">
         <strong>SOURCE RECEIPT</strong>
         <span>{feed.publisher}</span>
@@ -48,7 +59,7 @@ function PlaceDrawer({ feed, onClose }) {
         <div className="field-row"><span>Region</span><strong>{feed.region}</strong></div>
         <div className="field-row"><span>Category</span><strong>{feed.category}</strong></div>
         <div className="field-row"><span>Media</span><strong>{feed.media}</strong></div>
-        <div className="field-row"><span>Publisher class</span><strong>{official ? 'government official' : 'public commercial'}</strong></div>
+        <div className="field-row"><span>Publisher class</span><strong>{publisher.label.toLowerCase()}</strong></div>
         <div className="field-row"><span>Coordinates</span><strong>{feed.lat.toFixed(4)}, {feed.lon.toFixed(4)}</strong></div>
       </div>
       <a className="osm-link official-feed-link" href={feed.url} target="_blank" rel="noopener noreferrer">OPEN PUBLISHED VIEW ↗</a>
@@ -61,13 +72,18 @@ function PlacePanel({ map, onSelect, feeds, mode }) {
   const groups = useMemo(() => ({
     'Parks / nature': feeds.filter((feed) => feed.category === 'park'),
     'Wildlife / refuges': feeds.filter((feed) => feed.category === 'wildlife'),
+    'Zoos / aquariums / institutions': feeds.filter((feed) => feed.category === 'institution'),
+    'Great Lakes / NOAA': feeds.filter((feed) => feed.category === 'great-lakes'),
     'Aviation weather': feeds.filter((feed) => feed.category === 'aviation'),
     'Cities / traffic': feeds.filter((feed) => feed.category === 'city'),
     'Tourism / landmark': feeds.filter((feed) => feed.category === 'tourism'),
   }), [feeds])
 
   const jump = (feed) => {
-    const zoom = feed.category === 'aviation' ? 11 : feed.category === 'park' || feed.category === 'wildlife' ? 12 : 13
+    const zoom = feed.category === 'aviation' ? 11
+      : feed.category === 'great-lakes' ? 12
+        : feed.category === 'park' || feed.category === 'wildlife' || feed.category === 'institution' ? 12
+          : 13
     map?.setView([feed.lat, feed.lon], zoom)
     onSelect(feed)
   }
@@ -75,14 +91,14 @@ function PlacePanel({ map, onSelect, feeds, mode }) {
   return (
     <section className="panel place-source-panel">
       <div className="panel-heading"><span>{MODE[mode]?.label || 'PLACES'} SOURCES</span><span>CURATED</span></div>
-      <p className="microcopy">Curated public-view sources with government and public-commercial publishers kept visibly separate. Wildlife and FAA shortcuts are filtered views of this same provenance lane.</p>
+      <p className="microcopy">One canonical public-view registry. Government agencies, publishing institutions and public-commercial sources stay visibly distinct; the source chips are filtered views over the same records.</p>
       {Object.entries(groups).filter(([, entries]) => entries.length).map(([label, entries]) => (
         <div className="place-group" key={label}>
           <strong className="place-group-title">{label}</strong>
           {entries.map((feed) => (
             <button type="button" className="place-row" key={feed.id} onClick={() => jump(feed)}>
               <span><b>{feed.name}</b><small>{feed.publisher} • {PLACE_FEED_STATUS[feed.status]}</small></span>
-              <i>{feed.publisherClass === 'government-official' ? 'OFFICIAL' : 'PUBLIC'}</i>
+              <i className={`publisher-${feed.publisherClass}`}>{PLACE_PUBLISHER_CLASS[feed.publisherClass]?.replace(' OFFICIAL', '') || 'PUBLIC'}</i>
             </button>
           ))}
         </div>
@@ -176,7 +192,7 @@ export default function PlaceFeedEnhancer() {
     if (enabled) {
       visible.forEach((feed) => {
         const marker = L.marker([feed.lat, feed.lon], { icon: icon(feed), keyboard: true })
-        marker.bindTooltip(`${feed.name} • ${PLACE_FEED_STATUS[feed.status]}`, { direction: 'top', offset: [0, -12] })
+        marker.bindTooltip(`${feed.name} • ${PLACE_FEED_STATUS[feed.status]} • ${PLACE_PUBLISHER_CLASS[feed.publisherClass]}`, { direction: 'top', offset: [0, -12] })
         marker.on('click', () => {
           document.querySelectorAll('.detail-drawer.open .close-button').forEach((button) => button.click())
           setSelected(feed)
@@ -217,6 +233,8 @@ export default function PlaceFeedEnhancer() {
     all: FEEDS.length,
     wildlife: feedsForMode('wildlife').length,
     aviation: feedsForMode('aviation').length,
+    institution: feedsForMode('institution').length,
+    greatLakes: feedsForMode('greatLakes').length,
   }), [])
 
   return (
