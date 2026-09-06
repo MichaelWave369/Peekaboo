@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PublicCamViewer from './PublicCamViewer.jsx'
+import { RELEASE_LABEL, RELEASE_SHORT } from './release.js'
 
 function contextRow(label) {
   return [...document.querySelectorAll('.context-filter-row')]
@@ -36,9 +37,6 @@ function activateContextPreset(label) {
 
   const turningOff = Boolean(targetInput.checked)
 
-  // Quick chips are presets. A context-only preset must not inherit a state where
-  // every base camera category was previously disabled, or the result set becomes
-  // logically valid but visually empty.
   categoryRows().forEach((row) => setChecked(row.querySelector('input[type="checkbox"]'), true))
 
   ;[...document.querySelectorAll('.context-filter-row')].forEach((row) => {
@@ -62,19 +60,25 @@ function stampRelease() {
   const footer = document.querySelector('footer')
   if (footer) {
     const spans = footer.querySelectorAll('span')
-    setTextIfChanged(spans[0], 'PEEKABOO v1.2.2')
-    setTextIfChanged(spans[1], 'PUBLIC LINKS ONLY • NO DEVICE DISCOVERY • NO STREAM PROBING')
+    setTextIfChanged(spans[0], RELEASE_LABEL)
+    setTextIfChanged(spans[1], 'PUBLIC LINKS + OFFICIAL SOURCES • NO DEVICE DISCOVERY • NO STREAM PROBING')
   }
 
   const release = document.querySelector('.release-panel')
   const version = release?.querySelector('.panel-heading span:last-child')
-  setTextIfChanged(version, 'v1.2.2')
+  setTextIfChanged(version, RELEASE_SHORT)
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v13-official-sources]')) {
+    const item = document.createElement('li')
+    item.dataset.v13OfficialSources = 'true'
+    item.textContent = 'Official public-camera sources now sit beside OSM, beginning with USGS Ashcam current-image cameras and explicit source/freshness receipts.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v122-stale-cams]')) {
     const item = document.createElement('li')
     item.dataset.v122StaleCams = 'true'
-    item.textContent = 'Public webcam links now distinguish OSM-published URLs from reachability and use official provider fallbacks for known stale routes such as Nevada 511.'
-    list.prepend(item)
+    item.textContent = 'Public webcam links distinguish OSM-published URLs from reachability and use official provider fallbacks for known stale routes such as Nevada 511.'
+    list.appendChild(item)
   }
 }
 
@@ -117,16 +121,16 @@ function QuickCamFilters() {
         type="button"
         className={`${state.live.checked ? 'active ' : ''}${state.dirty ? 'stale ' : ''}live-cam-chip`.trim()}
         aria-pressed={state.live.checked}
-        title={state.dirty ? 'Counts belong to the previous scanned viewport. Rescan the current map.' : 'Show only records with an explicit public webcam URL.'}
+        title={state.dirty ? 'Counts belong to the previous scanned viewport. Rescan the current map.' : 'Show only OSM records with an explicit public webcam URL.'}
         onClick={() => clickPreset('Public live cam')}
       >
-        LIVE CAMS <strong>{state.dirty ? 'RESCAN' : state.live.count}</strong>
+        OSM LIVE <strong>{state.dirty ? 'RESCAN' : state.live.count}</strong>
       </button>
       <button
         type="button"
         className={`${state.weather.checked ? 'active ' : ''}${state.dirty ? 'stale ' : ''}weather-cam-chip`.trim()}
         aria-pressed={state.weather.checked}
-        title={state.dirty ? 'Counts belong to the previous scanned viewport. Rescan the current map.' : 'Show only public webcams described as weather / conditions feeds.'}
+        title={state.dirty ? 'Counts belong to the previous scanned viewport. Rescan the current map.' : 'Show only OSM public webcams described as weather / conditions feeds.'}
         onClick={() => clickPreset('Weather / conditions cam')}
       >
         WEATHER <strong>{state.dirty ? 'RESCAN' : state.weather.count}</strong>
@@ -147,7 +151,7 @@ function CamRescanNotice() {
 
   return (
     <div className="cam-rescan-notice" role="status">
-      <strong>LIVE CAM RESULTS ARE FROM THE PREVIOUS SCAN</strong>
+      <strong>OSM LIVE-CAM RESULTS ARE FROM THE PREVIOUS SCAN</strong>
       <span>Rescan this viewport before using those counts as current-area results.</span>
       <button type="button" onClick={requestCurrentMapScan}>RESCAN CURRENT MAP</button>
     </div>
@@ -192,7 +196,7 @@ export default function PublicCamEnhancer() {
         setNoticeHost((current) => current === notice ? current : notice)
       }
 
-      const drawer = document.querySelector('.detail-drawer.open')
+      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer)')
       const raw = drawer?.querySelector('.raw-tags pre')
       if (!drawer || !raw) {
         rawTextRef.current = ''
