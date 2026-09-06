@@ -1,5 +1,27 @@
 # Peekaboo changelog
 
+## 1.4.0
+
+Official transportation-camera expansion with viewport-bound Caltrans feeds.
+
+- Added **Caltrans CCTV** as a second zero-secret official-source adapter alongside USGS Ashcam.
+- Added a **CALTRANS** map chip and dedicated Caltrans source panel.
+- Caltrans requests are scoped to the current map viewport through the official ArcGIS CCTV FeatureServer rather than loading the entire statewide catalog.
+- Added explicit snapshot/video/source-status normalization from Caltrans fields including `currentImageURL`, `streamingVideoURL`, `inService`, route, direction, county and update metadata.
+- Caltrans records remain separate from OSM surveillance objects and the OSM change ledger.
+- Added fail-closed handling for ArcGIS `exceededTransferLimit`; Peekaboo refuses truncated camera datasets and asks the user to zoom in.
+- Added a two-minute viewport-keyed session cache and a 12-second source timeout.
+- Added stale-viewport protection: after the map moves, Caltrans markers and counts are not treated as current until the source is refreshed for the new view.
+- Added explicit source/service receipts and separate **video**, **snapshot**, and **out-of-service** presentation states.
+- Media never autoplays or autoloads. HTTPS snapshots load only after user action; direct video/HLS is offered only from Caltrans-published URLs and native browser playback capability.
+- HTTP media remains external-only to avoid mixed-content failures in the HTTPS app.
+- Added a 300-marker rendering cap for dense views while keeping the queried source count visible and instructing users to zoom in rather than silently dropping source records.
+- Added regressions for query bounding, transfer-limit reporting, service-state parsing, safe URL handling, duplicate IDs, invalid coordinates and source-error propagation.
+
+### Caltrans source semantics
+
+Caltrans camera records are official transportation-agency data. `inService` is treated as a source-published status claim, not independent proof of physical camera health. A `streamingVideoURL` or `currentImageURL` is used only when Caltrans explicitly publishes it. Peekaboo does not scan devices, derive stream paths, or probe alternate endpoints.
+
 ## 1.3.0
 
 Official public-camera sources become a separate evidence lane.
