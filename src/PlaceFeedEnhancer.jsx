@@ -5,9 +5,23 @@ import { getPeekabooMap } from './leafletRegistry.js'
 import { PLACE_FEED_STATUS, placeFeedRegistry, visiblePlaceFeeds } from './placeFeeds.js'
 
 const FEEDS = placeFeedRegistry()
+const MODE = {
+  all: { label: 'PLACES', categories: null },
+  wildlife: { label: 'WILDLIFE', categories: ['wildlife'] },
+  aviation: { label: 'FAA WX', categories: ['aviation'] },
+}
+
+function feedsForMode(mode) {
+  const categories = MODE[mode]?.categories
+  return categories ? FEEDS.filter((feed) => categories.includes(feed.category)) : FEEDS
+}
 
 function icon(feed) {
-  const letter = feed.category === 'park' ? 'N' : feed.category === 'city' ? 'C' : 'P'
+  const letter = feed.category === 'park' ? 'N'
+    : feed.category === 'city' ? 'C'
+      : feed.category === 'wildlife' ? 'W'
+        : feed.category === 'aviation' ? 'A'
+          : 'P'
   return L.divIcon({
     className: '',
     html: `<div class="place-feed-marker ${feed.publisherClass} ${feed.category}"><span>${letter}</span></div>`,
@@ -32,36 +46,40 @@ function PlaceDrawer({ feed, onClose }) {
       <div className="field-list official-feed-fields">
         <div className="field-row"><span>Place</span><strong>{feed.place}</strong></div>
         <div className="field-row"><span>Region</span><strong>{feed.region}</strong></div>
+        <div className="field-row"><span>Category</span><strong>{feed.category}</strong></div>
         <div className="field-row"><span>Media</span><strong>{feed.media}</strong></div>
         <div className="field-row"><span>Publisher class</span><strong>{official ? 'government official' : 'public commercial'}</strong></div>
         <div className="field-row"><span>Coordinates</span><strong>{feed.lat.toFixed(4)}, {feed.lon.toFixed(4)}</strong></div>
       </div>
       <a className="osm-link official-feed-link" href={feed.url} target="_blank" rel="noopener noreferrer">OPEN PUBLISHED VIEW ↗</a>
-      <p className="official-feed-disclaimer">This curated place layer opens the publisher's public page externally. Peekaboo does not copy, restream, scrape hidden media URLs, or imply government ownership for commercial tourism cameras.</p>
+      <p className="official-feed-disclaimer">This curated source opens the publisher's public page externally. Peekaboo does not copy, restream, scrape hidden media URLs, or promote partner/third-party imagery into a stronger ownership claim.</p>
     </aside>
   )
 }
 
-function PlacePanel({ map, onSelect }) {
+function PlacePanel({ map, onSelect, feeds, mode }) {
   const groups = useMemo(() => ({
-    'Parks / nature': FEEDS.filter((feed) => feed.category === 'park'),
-    'Cities / traffic': FEEDS.filter((feed) => feed.category === 'city'),
-    'Tourism / landmark': FEEDS.filter((feed) => feed.category === 'tourism'),
-  }), [])
+    'Parks / nature': feeds.filter((feed) => feed.category === 'park'),
+    'Wildlife / refuges': feeds.filter((feed) => feed.category === 'wildlife'),
+    'Aviation weather': feeds.filter((feed) => feed.category === 'aviation'),
+    'Cities / traffic': feeds.filter((feed) => feed.category === 'city'),
+    'Tourism / landmark': feeds.filter((feed) => feed.category === 'tourism'),
+  }), [feeds])
 
   const jump = (feed) => {
-    map?.setView([feed.lat, feed.lon], feed.category === 'park' ? 12 : 13)
+    const zoom = feed.category === 'aviation' ? 11 : feed.category === 'park' || feed.category === 'wildlife' ? 12 : 13
+    map?.setView([feed.lat, feed.lon], zoom)
     onSelect(feed)
   }
 
   return (
     <section className="panel place-source-panel">
-      <div className="panel-heading"><span>PLACES + NATURE</span><span>CURATED</span></div>
-      <p className="microcopy">A curated public-view index for parks, nature, landmark and tourism cameras. Government sources and public-commercial streams stay visibly separate.</p>
-      {Object.entries(groups).map(([label, feeds]) => (
+      <div className="panel-heading"><span>{MODE[mode]?.label || 'PLACES'} SOURCES</span><span>CURATED</span></div>
+      <p className="microcopy">Curated public-view sources with government and public-commercial publishers kept visibly separate. Wildlife and FAA shortcuts are filtered views of this same provenance lane.</p>
+      {Object.entries(groups).filter(([, entries]) => entries.length).map(([label, entries]) => (
         <div className="place-group" key={label}>
           <strong className="place-group-title">{label}</strong>
-          {feeds.map((feed) => (
+          {entries.map((feed) => (
             <button type="button" className="place-row" key={feed.id} onClick={() => jump(feed)}>
               <span><b>{feed.name}</b><small>{feed.publisher} • {PLACE_FEED_STATUS[feed.status]}</small></span>
               <i>{feed.publisherClass === 'government-official' ? 'OFFICIAL' : 'PUBLIC'}</i>
@@ -76,6 +94,7 @@ function PlacePanel({ map, onSelect }) {
 export default function PlaceFeedEnhancer() {
   const [map, setMap] = useState(() => getPeekabooMap())
   const [enabled, setEnabled] = useState(false)
+  const [mode, setMode] = useState('all')
   const [selected, setSelected] = useState(null)
   const [tick, setTick] = useState(0)
   const [chipHost, setChipHost] = useState(null)
@@ -144,11 +163,12 @@ export default function PlaceFeedEnhancer() {
     }
   }, [])
 
+  const modeFeeds = useMemo(() => feedsForMode(mode), [mode])
   const visible = useMemo(() => {
     void tick
     if (!map) return []
-    return visiblePlaceFeeds(map.getBounds(), FEEDS)
-  }, [map, tick])
+    return visiblePlaceFeeds(map.getBounds(), modeFeeds)
+  }, [map, tick, modeFeeds])
 
   useEffect(() => {
     if (!map) return undefined
@@ -172,7 +192,8 @@ export default function PlaceFeedEnhancer() {
 
   useEffect(() => {
     if (!enabled) setSelected(null)
-  }, [enabled])
+    if (selected && !modeFeeds.some((feed) => feed.id === selected.id)) setSelected(null)
+  }, [enabled, modeFeeds, selected])
 
   useEffect(() => {
     if (!selected) return undefined
@@ -183,15 +204,34 @@ export default function PlaceFeedEnhancer() {
     return () => observer.disconnect()
   }, [selected])
 
+  const chooseMode = (nextMode) => {
+    if (enabled && mode === nextMode) {
+      setEnabled(false)
+      return
+    }
+    setMode(nextMode)
+    setEnabled(true)
+  }
+
+  const counts = useMemo(() => ({
+    all: FEEDS.length,
+    wildlife: feedsForMode('wildlife').length,
+    aviation: feedsForMode('aviation').length,
+  }), [])
+
   return (
     <>
       {chipHost && createPortal(
-        <button type="button" className={`place-feed-chip ${enabled ? 'active' : ''}`} aria-pressed={enabled} onClick={() => setEnabled((value) => !value)}>
-          PLACES <strong>{enabled ? visible.length : FEEDS.length}</strong>
-        </button>,
+        <>
+          {Object.keys(MODE).map((key) => (
+            <button key={key} type="button" className={`place-feed-chip place-mode-${key} ${enabled && mode === key ? 'active' : ''}`} aria-pressed={enabled && mode === key} onClick={() => chooseMode(key)}>
+              {MODE[key].label} <strong>{enabled && mode === key ? visible.length : counts[key]}</strong>
+            </button>
+          ))}
+        </>,
         chipHost,
       )}
-      {panelHost && enabled && createPortal(<PlacePanel map={map} onSelect={setSelected} />, panelHost)}
+      {panelHost && enabled && createPortal(<PlacePanel map={map} onSelect={setSelected} feeds={modeFeeds} mode={mode} />, panelHost)}
       {drawerHost && selected && createPortal(<PlaceDrawer feed={selected} onClose={() => setSelected(null)} />, drawerHost)}
     </>
   )
