@@ -1,5 +1,27 @@
 # Peekaboo changelog
 
+## 1.3.0
+
+Official public-camera sources become a separate evidence lane.
+
+- Added an extensible official-feed adapter layer that is intentionally separate from OpenStreetMap surveillance records.
+- Added the first zero-secret official source: **USGS Volcano Hazards Program / Ashcam** public current-image cameras.
+- Added a **USGS CAMS** map chip and a dedicated **Official Public Cams** source panel.
+- Added USGS camera markers with source-specific styling and image-freshness classes.
+- Added a source-aware details drawer with the current USGS image, last-image timestamp, camera code, coordinates, volcano metadata when available, Ashcam history link, and original-provider link when supplied by USGS.
+- USGS images load only after explicit user action and surface a clear media-load failure state.
+- Added session caching and bounded source fetching for Ashcam, with source failure isolated from the OSM scanner.
+- Added a 250-marker rendering cap for unusually broad views; source counts remain accurate and users are asked to zoom in rather than silently dropping records.
+- Added regressions for Ashcam normalization, placeholder-coordinate rejection, HTTPS image requirements, duplicate records, and freshness classification.
+- Renamed the OSM webcam quick chip to **OSM LIVE** so source provenance is visible before opening a record.
+- Centralized release labels so enhancement components cannot race each other into displaying different versions.
+
+### Official-source semantics
+
+USGS Ashcam records are kept outside Peekaboo's OSM surveillance dataset and OSM change ledger. A USGS current image is treated as a near-real-time public snapshot whose freshness comes from the timestamp reported by Ashcam. It is not automatically described as continuous live video.
+
+Official-source adapters do not probe devices, guess stream URLs, bypass authentication, or discover exposed cameras. They consume only intentionally public source data and published media.
+
 ## 1.2.2
 
 Stale public-webcam provider repair and reachability semantics.
