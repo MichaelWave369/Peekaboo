@@ -36,11 +36,19 @@ import {
   saveBaseline,
   validateSnapshot,
 } from './ledger.js'
+import { useProductState } from './productState.jsx'
+import {
+  buildProductHash,
+  normalizeProductMode,
+  normalizeRecordId,
+  sortRecordSummaries,
+} from './productNavigation.js'
 
 const START = [40.7128, -74.006]
 const START_ZOOM = 13
 const MAX_AREA_KM2 = 2500
 const MAX_SNAPSHOT_IMPORT_BYTES = 6 * 1024 * 1024
+const MAX_RESULT_LIST = 100
 
 function defaultFilters() {
   return Object.fromEntries(Object.keys(CATEGORY_META).map((key) => [key, true]))
@@ -57,6 +65,8 @@ function parseInitialState() {
     filters: defaultFilters(),
     contextFilters: defaultContextFilters(),
     search: '',
+    mode: 'surveillance',
+    recordId: '',
   }
   try {
     const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
@@ -68,6 +78,8 @@ function parseInitialState() {
       filters: defaultFilters(),
       contextFilters: defaultContextFilters(),
       search: params.get('q') || '',
+      mode: normalizeProductMode(params.get('mode')),
+      recordId: normalizeRecordId(params.get('record')),
     }
 
     if (map) {
@@ -241,7 +253,27 @@ function browserStorage() {
   }
 }
 
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value)
+    return true
+  } catch {
+    try {
+      const input = document.createElement('textarea')
+      input.value = value
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      input.remove()
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 export default function App() {
+  const { publish, registerActions } = useProductState()
   const initial = useRef(parseInitialState())
   const [items, setItems] = useState([])
   const [selected, setSelected] = useState(null)
@@ -254,6 +286,9 @@ export default function App() {
   const [filters, setFilters] = useState(initial.current.filters)
   const [contextFilters, setContextFilters] = useState(initial.current.contextFilters)
   const [searchQuery, setSearchQuery] = useState(initial.current.search)
+  const [mode, setMode] = useState(initial.current.mode)
+  const [recordLinkTarget, setRecordLinkTarget] = useState(initial.current.recordId)
+  const [resultsOpen, setResultsOpen] = useState(false)
   const [loadedFingerprint, setLoadedFingerprint] = useState('')
   const [loadedAreaKm2, setLoadedAreaKm2] = useState(0)
   const [queryInfo, setQueryInfo] = useState(null)
@@ -295,6 +330,19 @@ export default function App() {
   }, [items])
   const contextCounts = useMemo(() => contextSummary(items), [items])
   const defaultMapFilters = Object.values(filters).every(Boolean) && !Object.values(contextFilters).some(Boolean)
+  const resultList = useMemo(() => viewDirty ? [] : sortRecordSummaries(filtered), [filtered, viewDirty])
+  const resultListVisible = resultList.slice(0, MAX_RESULT_LIST)
+  const plainView = useMemo(() => {
+    if (!view) return null
+    const nextBounds = bounds ? {
+      west: bounds.getWest(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      north: bounds.getNorth(),
+    } : null
+    return { ...view, bounds: nextBounds }
+  }, [view, bounds])
+  const productScanLabel = loading ? 'SCANNING OSM…' : viewDirty ? 'RESCAN THIS VIEW' : 'SCAN THIS VIEW'
 
   useEffect(() => {
     const onOnline = () => setOnline(true)
@@ -309,15 +357,16 @@ export default function App() {
 
   useEffect(() => {
     if (!view) return
-    const activeLayers = Object.entries(filters).filter(([, enabled]) => enabled).map(([key]) => key).join(',')
-    const activeContexts = Object.entries(contextFilters).filter(([, enabled]) => enabled).map(([key]) => key).join(',')
-    const params = new URLSearchParams()
-    params.set('map', `${view.zoom}/${view.lat.toFixed(5)}/${view.lon.toFixed(5)}`)
-    params.set('layers', activeLayers)
-    if (activeContexts) params.set('contexts', activeContexts)
-    if (searchQuery.trim()) params.set('q', searchQuery.trim())
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${params.toString()}`)
-  }, [view, filters, contextFilters, searchQuery])
+    const hash = buildProductHash({
+      view,
+      filters,
+      contexts: contextFilters,
+      search: searchQuery,
+      mode,
+      recordId: recordLinkTarget,
+    })
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${hash}`)
+  }, [view, filters, contextFilters, searchQuery, mode, recordLinkTarget])
 
   useEffect(() => {
     if (!utilityMessage) return
@@ -326,8 +375,15 @@ export default function App() {
   }, [utilityMessage])
 
   useEffect(() => {
-    if (selected && !filtered.some((item) => item.id === selected.id)) setSelected(null)
+    if (selected && !filtered.some((item) => item.id === selected.id)) {
+      setSelected(null)
+      setRecordLinkTarget('')
+    }
   }, [filtered, selected])
+
+  useEffect(() => {
+    if (mode !== 'surveillance') setResultsOpen(false)
+  }, [mode])
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -352,7 +408,10 @@ export default function App() {
       const saved = loadBaseline(browserStorage(), result.fingerprint)
 
       setItems(result.items)
-      setSelected((current) => result.items.find((item) => item.id === current?.id) || null)
+      setSelected((current) => {
+        const target = current?.id || recordLinkTarget
+        return result.items.find((item) => item.id === target) || null
+      })
       setLoadedAreaKm2(area)
       setLoadedFingerprint(result.fingerprint)
       setLastUpdated(new Date(result.fetchedAt))
@@ -373,34 +432,73 @@ export default function App() {
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
-  }, [])
+  }, [recordLinkTarget])
 
   const handleView = useCallback((nextView) => {
     setBounds(nextView.bounds)
     setView({ lat: nextView.lat, lon: nextView.lon, zoom: nextView.zoom })
   }, [])
 
-  const requestScan = (force = false) => setRequest((current) => ({ id: current.id + 1, force }))
+  const requestScan = useCallback((force = false) => {
+    setRequest((current) => ({ id: current.id + 1, force }))
+  }, [])
   const toggleFilter = (key) => setFilters((current) => ({ ...current, [key]: !current[key] }))
   const toggleContext = (key) => setContextFilters((current) => ({ ...current, [key]: !current[key] }))
   const resetMapFilters = () => {
     setFilters(defaultFilters())
     setContextFilters(defaultContextFilters())
   }
+  const selectRecord = useCallback((item) => {
+    if (!item) return
+    setSelected(item)
+    setRecordLinkTarget(item.id)
+    setResultsOpen(false)
+  }, [])
+  const clearSelection = useCallback(() => {
+    setSelected(null)
+    setRecordLinkTarget('')
+  }, [])
+  const selectRecordById = useCallback((id) => {
+    const item = items.find((candidate) => candidate.id === id)
+    if (item) selectRecord(item)
+  }, [items, selectRecord])
+  const openLedger = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('peekaboo:set-sidebar', { detail: { open: true } }))
+    window.setTimeout(() => document.querySelector('.ledger-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 90)
+  }, [])
+
+  useEffect(() => registerActions({
+    scan: requestScan,
+    selectRecord: selectRecordById,
+    openLedger,
+    setMode,
+  }), [registerActions, requestScan, selectRecordById, openLedger])
+
+  useEffect(() => {
+    publish({
+      view: plainView,
+      scan: {
+        label: productScanLabel,
+        loading,
+        dirty: viewDirty,
+        canScan: Boolean(bounds && !loading),
+      },
+      ledgerDelta: comparison?.compatible ? {
+        added: deltaSummary.added,
+        removed: deltaSummary.removed,
+        changed: deltaSummary.changed,
+      } : null,
+      mode,
+      selectedId: selected?.id || null,
+      pendingRecordId: recordLinkTarget || null,
+      queryLoaded: Boolean(queryInfo),
+      viewDirty,
+    })
+  }, [publish, plainView, productScanLabel, loading, viewDirty, bounds, comparison, deltaSummary, mode, selected, recordLinkTarget, queryInfo])
 
   const copyViewLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setUtilityMessage('VIEW LINK COPIED')
-    } catch {
-      const input = document.createElement('textarea')
-      input.value = window.location.href
-      document.body.appendChild(input)
-      input.select()
-      document.execCommand('copy')
-      input.remove()
-      setUtilityMessage('VIEW LINK COPIED')
-    }
+    await copyText(window.location.href)
+    setUtilityMessage('VIEW LINK COPIED')
   }
 
   const shareView = async () => {
@@ -413,11 +511,35 @@ export default function App() {
         })
         setUtilityMessage('SHARE SHEET OPENED')
         return
-      } catch (error) {
-        if (error?.name === 'AbortError') return
+      } catch (shareError) {
+        if (shareError?.name === 'AbortError') return
       }
     }
     await copyViewLink()
+  }
+
+  const copyRecordLink = async () => {
+    if (!selected) return
+    await copyText(window.location.href)
+    setUtilityMessage('RECORD LINK COPIED')
+  }
+
+  const shareRecord = async () => {
+    if (!selected) return
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${selected.name} — Peekaboo`,
+          text: 'Public OpenStreetMap surveillance record in Peekaboo.',
+          url: window.location.href,
+        })
+        setUtilityMessage('RECORD SHARE OPENED')
+        return
+      } catch (shareError) {
+        if (shareError?.name === 'AbortError') return
+      }
+    }
+    await copyRecordLink()
   }
 
   const exportGeoJSON = () => {
@@ -552,7 +674,7 @@ export default function App() {
   const scanLabel = loading ? 'QUERYING OPENSTREETMAP…' : viewDirty ? 'RESCAN CURRENT MAP' : 'SCAN CURRENT MAP'
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell mode-${mode}`}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="eye-logo"><span /></div>
@@ -765,16 +887,23 @@ export default function App() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapBridge onView={handleView} onScan={runQuery} request={request} />
-            <MapRecords entries={renderedEntries} selected={selected} onSelect={setSelected} changeStatusById={changeStatusById} />
+            <MapRecords entries={renderedEntries} selected={selected} onSelect={selectRecord} changeStatusById={changeStatusById} />
           </MapContainer>
 
+          <div className="map-mode-switch" role="group" aria-label="Peekaboo browse mode">
+            <button type="button" className={mode === 'surveillance' ? 'active' : ''} aria-pressed={mode === 'surveillance'} onClick={() => setMode('surveillance')}>SURVEILLANCE</button>
+            <button type="button" className={mode === 'public' ? 'active' : ''} aria-pressed={mode === 'public'} onClick={() => setMode('public')}>PUBLIC VIEWS</button>
+          </div>
+
           <div className="map-filter-chips" role="group" aria-label="Quick map filters">
-            <button type="button" className={defaultMapFilters ? 'active' : ''} aria-pressed={defaultMapFilters} onClick={resetMapFilters}>ALL</button>
-            <button type="button" className={filters.flock ? 'active flock-chip' : 'flock-chip'} aria-pressed={filters.flock} onClick={() => toggleFilter('flock')}>FLOCK <strong>{categoryCounts.flock || 0}</strong></button>
-            <button type="button" className={filters.alpr ? 'active alpr-chip' : 'alpr-chip'} aria-pressed={filters.alpr} onClick={() => toggleFilter('alpr')}>ALPR <strong>{categoryCounts.alpr || 0}</strong></button>
-            <button type="button" className={filters.camera ? 'active camera-chip' : 'camera-chip'} aria-pressed={filters.camera} onClick={() => toggleFilter('camera')}>CAMERAS <strong>{categoryCounts.camera || 0}</strong></button>
-            <button type="button" className={contextFilters.public ? 'active public-chip' : 'public-chip'} aria-pressed={contextFilters.public} onClick={() => toggleContext('public')}>PUBLIC SPACE <strong>{contextCounts.public || 0}</strong></button>
-            <button type="button" className={contextFilters.park ? 'active park-chip' : 'park-chip'} aria-pressed={contextFilters.park} onClick={() => toggleContext('park')}>PARKS <strong>{contextCounts.park || 0}</strong></button>
+            <span className="osm-filter-chip-group">
+              <button type="button" className={defaultMapFilters ? 'active' : ''} aria-pressed={defaultMapFilters} onClick={resetMapFilters}>ALL</button>
+              <button type="button" className={filters.flock ? 'active flock-chip' : 'flock-chip'} aria-pressed={filters.flock} onClick={() => toggleFilter('flock')}>FLOCK <strong>{categoryCounts.flock || 0}</strong></button>
+              <button type="button" className={filters.alpr ? 'active alpr-chip' : 'alpr-chip'} aria-pressed={filters.alpr} onClick={() => toggleFilter('alpr')}>ALPR <strong>{categoryCounts.alpr || 0}</strong></button>
+              <button type="button" className={filters.camera ? 'active camera-chip' : 'camera-chip'} aria-pressed={filters.camera} onClick={() => toggleFilter('camera')}>CAMERAS <strong>{categoryCounts.camera || 0}</strong></button>
+              <button type="button" className={contextFilters.public ? 'active public-chip' : 'public-chip'} aria-pressed={contextFilters.public} onClick={() => toggleContext('public')}>PUBLIC SPACE <strong>{contextCounts.public || 0}</strong></button>
+              <button type="button" className={contextFilters.park ? 'active park-chip' : 'park-chip'} aria-pressed={contextFilters.park} onClick={() => toggleContext('park')}>PARKS <strong>{contextCounts.park || 0}</strong></button>
+            </span>
           </div>
 
           <div className={`map-hud ${viewDirty ? 'warn' : !online ? 'warn' : ''}`}>
@@ -799,9 +928,47 @@ export default function App() {
             <small>Marker = type • Public/Parks = OSM context filters</small>
           </div>
 
+          {mode === 'surveillance' && queryInfo && (
+            <button
+              type="button"
+              className={`osm-results-toggle ${viewDirty ? 'stale' : ''}`}
+              onClick={() => setResultsOpen((value) => !value)}
+              disabled={viewDirty}
+              title={viewDirty ? 'These OSM records belong to the previous scanned viewport. Rescan before browsing them as current-view results.' : 'Browse loaded OSM records in this scanned viewport.'}
+            >
+              {viewDirty ? 'OSM RESULTS STALE' : 'OSM RESULTS'} <strong>{filtered.length}</strong>
+            </button>
+          )}
+
+          {mode === 'surveillance' && resultsOpen && !viewDirty && (
+            <section className="osm-results-panel" aria-label="OSM records in this scanned viewport">
+              <div className="osm-results-head">
+                <span>IN THIS SCANNED VIEW • OSM</span>
+                <button type="button" onClick={() => setResultsOpen(false)} aria-label="Close OSM results">×</button>
+              </div>
+              <div className="osm-results-note">These are public OpenStreetMap records from the loaded scan, grouped here for browsing rather than inferred physical coverage.</div>
+              <div className="osm-results-list">
+                {resultListVisible.map((item) => (
+                  <button type="button" className="osm-result-row" key={item.id} onClick={() => selectRecord(item)}>
+                    <span className="result-glyph">{CATEGORY_META[item.category]?.glyph || '•'}</span>
+                    <span><b>{item.name}</b><small>{CATEGORY_META[item.category]?.label || item.category} • {item.zone || 'zone unknown'}</small></span>
+                    <i>{recordAge(item.timestamp).label}</i>
+                  </button>
+                ))}
+              </div>
+              {resultList.length > MAX_RESULT_LIST && <div className="osm-results-cap">Showing the first {MAX_RESULT_LIST.toLocaleString()} of {resultList.length.toLocaleString()} filtered OSM records. Narrow the scan/filter rather than treating this list cap as missing source data.</div>}
+            </section>
+          )}
+
           {comparison?.compatible && (
             <div className={`ledger-hud ${deltaSummary.totalDelta ? 'active' : ''}`}>
               {deltaSummary.totalDelta ? `CHANGE LEDGER • ${deltaSummary.totalDelta} OSM Δ` : 'BASELINE MATCH • 0 OSM Δ'}
+            </div>
+          )}
+
+          {recordLinkTarget && !selected && (
+            <div className="record-link-pending">
+              {queryInfo ? 'LINKED OSM RECORD IS NOT PRESENT IN THIS LOADED SCAN' : 'RECORD LINK READY • SCAN THIS VIEW TO LOAD THE OSM RECORD'}
             </div>
           )}
         </section>
@@ -809,10 +976,14 @@ export default function App() {
         <aside className={`detail-drawer ${selected ? 'open' : ''}`}>
           {selected ? (
             <>
-              <button className="close-button" onClick={() => setSelected(null)} aria-label="Close details">×</button>
+              <button className="close-button" onClick={clearSelection} aria-label="Close details">×</button>
               <div className="eyebrow">OBJECT / {selected.osmType.toUpperCase()} {selected.osmId}</div>
               <h2>{selected.name}</h2>
               <div className={`category-pill ${selected.category}`}>{CATEGORY_META[selected.category]?.label}</div>
+              <div className="record-link-actions">
+                <button type="button" className="primary" onClick={copyRecordLink}>COPY RECORD LINK</button>
+                <button type="button" onClick={shareRecord}>SHARE RECORD</button>
+              </div>
               {selectedChange && (
                 <div className={`change-note ${selectedChange.status}`}>
                   <strong>CHANGE LEDGER / OSM</strong>
