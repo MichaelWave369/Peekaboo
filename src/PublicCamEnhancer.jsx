@@ -68,11 +68,17 @@ function stampRelease() {
   const version = release?.querySelector('.panel-heading span:last-child')
   setTextIfChanged(version, RELEASE_SHORT)
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v14-caltrans]')) {
+    const item = document.createElement('li')
+    item.dataset.v14Caltrans = 'true'
+    item.textContent = 'Caltrans CCTV is now a separate official-source layer with viewport-bound queries, snapshot/video evidence, service status, and fail-closed transfer-limit handling.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v13-official-sources]')) {
     const item = document.createElement('li')
     item.dataset.v13OfficialSources = 'true'
     item.textContent = 'Official public-camera sources now sit beside OSM, beginning with USGS Ashcam current-image cameras and explicit source/freshness receipts.'
-    list.prepend(item)
+    list.appendChild(item)
   }
   if (list && !list.querySelector('[data-v122-stale-cams]')) {
     const item = document.createElement('li')
@@ -196,7 +202,7 @@ export default function PublicCamEnhancer() {
         setNoticeHost((current) => current === notice ? current : notice)
       }
 
-      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer)')
+      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer):not(.caltrans-feed-drawer)')
       const raw = drawer?.querySelector('.raw-tags pre')
       if (!drawer || !raw) {
         rawTextRef.current = ''
