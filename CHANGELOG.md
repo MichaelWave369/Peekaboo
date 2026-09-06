@@ -1,5 +1,29 @@
 # Peekaboo changelog
 
+## 1.5.0
+
+Reusable ArcGIS official-feed foundation plus Iowa DOT / Iowa 511 cameras.
+
+- Added shared ArcGIS official-feed helpers for envelope validation, deterministic viewport fingerprints, bounded FeatureServer queries, transfer-limit detection, source-error propagation, coordinate extraction and first-ID-wins deduplication.
+- Added **Iowa DOT / Iowa 511** as another credential-free official public camera source.
+- Added an **IOWA DOT** map chip and dedicated Iowa DOT source panel.
+- Iowa DOT requests are scoped to the current map viewport through the state-published Traffic Cameras FeatureServer.
+- Added explicit image/video normalization from `ImageURL` and `VideoURL` without treating ordinary camera metadata as feed access.
+- Added source metadata including route, region, organization, camera type/function, common camera ID and the public `RECORDED` field.
+- The Iowa `RECORDED` field is displayed only as a source claim; Peekaboo does not reinterpret it as proof of current recording or retention.
+- Iowa records remain separate from OSM surveillance objects and the OSM change ledger.
+- Added fail-closed handling for ArcGIS `exceededTransferLimit`; truncated camera datasets are rejected rather than displayed as complete.
+- Added two-minute viewport-keyed session caching and a 12-second source timeout.
+- Added stale-viewport protection: moving the map invalidates the loaded Iowa DOT locality claim until the current viewport is refreshed.
+- Media never autoplays or autoloads. HTTPS image/video/HLS is offered only from explicit Iowa DOT fields and only inline when the browser can support the media type.
+- HTTP media remains external-only to avoid mixed-content failures in the HTTPS app.
+- Added a 300-marker rendering cap for dense views while preserving the queried source count and instructing users to zoom in rather than silently dropping records.
+- Added regressions for shared ArcGIS helpers, Iowa query bounding, safe media URLs, duplicate IDs, transfer-limit handling, source errors and conservative recording-field semantics.
+
+### Iowa DOT source semantics
+
+Iowa DOT explicitly documents its 511 ESRI feature services as credential-free public data feeds for current traffic cameras, images and video streams. Peekaboo consumes only those published fields. It does not derive stream paths, probe devices or infer feed access from camera existence alone.
+
 ## 1.4.0
 
 Official transportation-camera expansion with viewport-bound Caltrans feeds.
