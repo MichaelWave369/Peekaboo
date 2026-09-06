@@ -1,0 +1,126 @@
+/* Peekaboo v1.7: source-rail polish + curated places/nature layer. */
+
+.map-filter-chips {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+  padding-right: 24px !important;
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+}
+.map-filter-chips::-webkit-scrollbar { display: none; }
+.map-filter-chips > * { flex: 0 0 auto; scroll-snap-align: start; }
+.map-filter-chips button { white-space: nowrap; }
+
+.place-chip-host { display: contents; }
+.map-filter-chips .place-feed-chip.active {
+  border-color: #33857b;
+  background: #e9fbf7;
+  color: #17645c;
+}
+.map-filter-chips .place-feed-chip strong { color: #277d72; }
+
+.place-feed-marker {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #77d7c4;
+  background: #173c38;
+  color: #effffb;
+  box-shadow: 0 2px 9px rgba(0,0,0,.42);
+  font-size: 10px;
+  font-weight: 950;
+}
+.place-feed-marker.government-official { border-color: #62d4aa; background: #163e32; }
+.place-feed-marker.commercial-public { border-color: #bb8ce8; background: #34214a; }
+.place-feed-marker.park { box-shadow: 0 0 0 3px rgba(98,212,170,.18), 0 2px 9px rgba(0,0,0,.42); }
+
+#peekaboo-place-drawer-host { position: relative; z-index: 918; }
+.place-feed-drawer { z-index: 930; }
+.place-source-pill {
+  display: inline-flex;
+  margin: 7px 0 12px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.place-source-pill.official { border: 1px solid #3b8069; background: #122d26; color: #94e7c7; }
+.place-source-pill.commercial { border: 1px solid #745a92; background: #241a31; color: #d8b7f5; }
+.place-source-note {
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px solid #385a55;
+  border-radius: 8px;
+  background: #101819;
+  color: #a9b7b7;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.place-source-note strong,
+.place-source-note span { display: block; }
+.place-source-note strong { color: #79d9c5; font-size: 8px; letter-spacing: .1em; }
+.place-source-note span { margin-top: 4px; color: #e7f5f2; font-weight: 800; }
+.place-source-note p { margin: 7px 0 0; }
+
+.place-source-panel { border-color: #31564f; }
+.place-source-panel .panel-heading span:last-child { color: #76d8c2; }
+.place-group { margin-top: 12px; }
+.place-group-title {
+  display: block;
+  margin-bottom: 6px;
+  color: #79928e;
+  font-size: 8px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.place-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 9px;
+  border: 1px solid #2e4144;
+  border-radius: 8px;
+  background: #0d1518;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.place-row:hover { border-color: #4f7972; background: #101c1e; }
+.place-row span { min-width: 0; }
+.place-row b,
+.place-row small { display: block; }
+.place-row b { color: #eef7f5; font-size: 9px; }
+.place-row small { margin-top: 3px; color: #7f9294; font-size: 7px; line-height: 1.35; }
+.place-row i {
+  padding: 4px 6px;
+  border: 1px solid #3b5d58;
+  border-radius: 999px;
+  color: #7dd6c3;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+@media (max-width: 900px) {
+  .map-filter-chips {
+    gap: 6px !important;
+    padding-left: 10px !important;
+    padding-right: 32px !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .place-row { min-height: 46px; }
+}
