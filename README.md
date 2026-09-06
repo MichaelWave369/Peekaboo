@@ -8,9 +8,9 @@ Peekaboo is a client-side public-data map for exploring mapped surveillance infr
 
 **Live site:** https://michaelwave369.github.io/Peekaboo/
 
-## Current release: v1.6.0
+## Current release: v1.7.0
 
-Peekaboo currently has three distinct evidence lanes:
+Peekaboo currently has four distinct evidence lanes:
 
 1. **OpenStreetMap / Overpass surveillance records**
    - Cameras, ALPR, Flock Safety claims, guards/watched areas, gunshot detectors and other mapped surveillance objects.
@@ -30,28 +30,35 @@ Peekaboo currently has three distinct evidence lanes:
    - **Illinois public traffic cameras** for the Chicago region through a public ArcGIS camera service.
    - Official-source records remain separate from OSM and do not enter the OSM change ledger.
 
+4. **Curated Places + Nature sources**
+   - NPS park webcam pages, official traffic-camera viewers and intentionally public tourism/landmark streams.
+   - Government and public-commercial publishers are labeled separately.
+   - Initial coverage includes Yellowstone, Grand Canyon, Las Vegas, Atlantic City, Key West and the Anaheim / Disneyland Resort area.
+   - Curated place sources open on the publisher's site and are not restreamed or scraped by Peekaboo.
+
 ## Major metro coverage
 
-v1.6 introduces an explicit metro coverage matrix instead of making unsupported areas look indistinguishable from empty data.
+Peekaboo exposes an explicit metro coverage matrix instead of making unsupported areas look indistinguishable from empty data.
 
 | Metro | Peekaboo status | Public source |
 | --- | --- | --- |
 | Los Angeles | **IN APP** | Caltrans CCTV / QuickMap |
 | Denver | **IN APP** | CDOT / COtrip |
-| Chicago | **IN APP** | Illinois public traffic-camera ArcGIS service |
-| New York City | **KEY REQUIRED** | 511NY documented camera API / public viewer |
+| Chicago | **IN APP** | Illinois public traffic cameras |
+| New York City | **KEY REQUIRED** | 511NY camera API |
 | Miami | **OFFICIAL VIEWER** | FL511 |
 | Detroit | **OFFICIAL VIEWER** | MDOT Mi Drive |
-| Tucson | **KEY REQUIRED** | AZ511 documented camera API / public viewer |
+| Tucson | **KEY REQUIRED** | AZ511 camera API |
 | Austin | **OFFICIAL VIEWER** | TxDOT / DriveTexas |
 
-`IN APP` means Peekaboo has a source adapter. `OFFICIAL VIEWER` means the agency publishes public cameras but Peekaboo has not found a sufficiently stable no-secret machine-readable integration contract. `KEY REQUIRED` means the documented camera API requires credentials and therefore cannot be safely embedded in the public GitHub Pages bundle.
+`KEY REQUIRED` is intentionally different from `OFFICIAL VIEWER`: Peekaboo will not expose API credentials in the public GitHub Pages bundle. A protected proxy is the appropriate future path for sources such as 511NY and AZ511.
 
 ## What Peekaboo is
 
 - A transparency and civic-tech visualization tool.
 - A map-first browser interface for public surveillance metadata.
 - A provenance-aware viewer for camera media intentionally published by public data sources.
+- A public-view atlas for government, park, environmental and clearly labeled public-commercial camera sources.
 - A way to compare OSM records through time without confusing database change with physical-device change.
 - A client-side application with no device scanner and no camera-discovery backend.
 
@@ -66,7 +73,8 @@ Peekaboo does **not**:
 - convert an ordinary surveillance marker into a viewable camera;
 - identify surveillance blind spots or provide camera-avoidance routing;
 - claim that an unmapped area has no surveillance;
-- treat a stale/deleted OSM record as proof that physical hardware was removed.
+- treat a stale/deleted OSM record as proof that physical hardware was removed;
+- relabel a third-party tourism camera as an official city, park or property-owner feed.
 
 A feed is shown only when an upstream public source explicitly publishes the media or camera link.
 
@@ -76,10 +84,10 @@ Peekaboo uses familiar consumer-map interaction patterns without copying third-p
 
 - floating address/place search;
 - full-map workspace;
-- quick filter chips;
+- horizontally scrollable quick-source rail;
 - collapsible research panel;
 - marker details drawer / mobile bottom sheet;
-- independently styled OSM, USGS, Caltrans, Iowa DOT, Denver/CDOT and Chicago/Illinois camera markers.
+- independently styled OSM, USGS, Caltrans, Iowa DOT, metro and curated-place markers.
 
 Address search only moves the map. It does not silently trigger an OSM surveillance scan or an official-source request.
 
@@ -133,9 +141,7 @@ Official sources are isolated from the OSM data model. A failure in an official 
 
 ### Shared ArcGIS source contract
 
-Peekaboo uses reusable source-agnostic helpers for camera data exposed through ArcGIS FeatureServer endpoints.
-
-The shared contract handles:
+Reusable helpers handle source-agnostic mechanics for official camera FeatureServers:
 
 - validated geographic envelopes;
 - deterministic viewport fingerprints;
@@ -146,53 +152,54 @@ The shared contract handles:
 - coordinate normalization;
 - deterministic first-ID-wins deduplication.
 
-Camera-specific semantics stay in each source adapter. Peekaboo does not collapse agency-specific fields into a universal truth flag.
+Camera-specific semantics stay in each agency adapter. Peekaboo does not collapse unrelated agency fields into a generic truth flag.
 
 ### USGS Ashcam
 
-USGS Ashcam supplies public current-image cameras with explicit image timestamps. Peekaboo labels these as current/near-real-time snapshots rather than automatically calling them continuous live video.
+Peekaboo can load public current-image camera records from the USGS Volcano Hazards Program Ashcam service.
 
-### Caltrans CCTV
+- zero-secret browser adapter;
+- explicit source receipt;
+- coordinates and camera code;
+- current-image URL;
+- reported image timestamp;
+- image-freshness classes (`<1 hour`, `<24 hours`, `<7 days`, `7+ days`, unknown);
+- optional original-provider link;
+- 10-minute session cache;
+- 12-second source timeout;
+- bounded marker rendering for broad views.
 
-Caltrans is queried by current map viewport. The adapter can use source-published `currentImageURL`, `streamingVideoURL`, `inService`, route, direction, county and source update fields. Transfer-limit truncation is rejected rather than displayed as a complete dataset.
+Ashcam images are described as current/near-real-time snapshots, not automatically as continuous live video.
 
-### Iowa DOT / Iowa 511
+### Transportation camera sources
 
-Iowa DOT documents its ESRI camera feature service as credential-free public data for current traffic camera images/video. Peekaboo consumes only explicit `ImageURL` and `VideoURL` fields. The Iowa `RECORDED` field is displayed only as a source claim, not proof that a camera is currently recording or retaining footage.
+Peekaboo currently has first-class transportation-camera adapters for:
 
-### Denver / Colorado DOT
+- **Caltrans CCTV**
+- **Iowa DOT / Iowa 511**
+- **Denver / CDOT / COtrip machine-readable camera source**
+- **Chicago-region / Illinois public traffic cameras**
 
-The Denver source uses camera data currently exposed through a **CDOT-owned `test.maps.codot.gov` GIS host**. Because the machine-readable endpoint is explicitly on a test host, Peekaboo treats it as potentially less stable than the public COtrip viewer and keeps COtrip as the authoritative fallback.
+Shared rules include current-viewport querying where applicable, fail-closed transfer-limit handling, stale-view protection, safe public media URLs, no autoplay, source-specific status semantics and bounded rendering that preserves the difference between queried records and rendered markers.
 
-- current viewport only;
-- two-minute viewport-keyed session cache;
-- 12-second timeout;
-- fail closed on ArcGIS transfer-limit truncation;
-- source `status` remains a source claim;
-- media type is inferred only from the explicit published URL;
-- no autoplay or automatic media loading;
-- moved-map data becomes stale until refreshed.
+The major-metro panel distinguishes **IN APP**, **OFFICIAL VIEWER** and **KEY REQUIRED** sources so a missing adapter is not confused with an absence of cameras.
 
-### Chicago / Illinois public traffic cameras
+## Places + Nature lane
 
-The Chicago source uses a public Illinois traffic-camera ArcGIS service containing snapshot/location/direction and source-age fields.
+v1.7 adds a curated public-view registry for locations where the publisher exposes a stable public webcam page but a camera-level zero-secret API is not necessarily available.
 
-Peekaboo deliberately labels this as an **Illinois public traffic-camera service** rather than claiming every individual record has identical agency ownership.
+Initial entries include:
 
-- snapshots only unless the source explicitly adds a supported media field later;
-- source-reported `AgeInMinutes`, `TooOld` and warning-age values remain source metadata;
-- moved-map data becomes stale until refreshed;
-- unsafe/private URLs are rejected;
-- transfer-limit truncation fails closed.
+- **Yellowstone National Park** — official NPS webcam hub including the Old Faithful / Upper Geyser Basin livestream and static park webcams.
+- **Grand Canyon National Park** — official NPS Yavapai Point and South Entrance webcam pages.
+- **Las Vegas** — official RTC/NDOT traffic-camera gateway plus a separately labeled EarthCam public tourism stream.
+- **Atlantic City** — official NJDOT / 511NJ traffic-camera viewer plus a separately labeled public Boardwalk livestream.
+- **Key West Harbor** — public PTZtv / Historic Tours of America stream, explicitly labeled as not affiliated with or officially endorsed by the City of Key West.
+- **Anaheim / Disneyland Resort area** — public EarthCam / Hilton Anaheim view, explicitly labeled as not an official Disneyland or Disney-operated camera.
 
-## Official-source rendering discipline
+Curated place-camera pages are external-only. Peekaboo does not copy or restream them, scrape hidden media URLs, or infer ownership from what appears in the frame.
 
-Official-source queries may return more records than are sensible to render as Leaflet markers in one view.
-
-- source counts remain intact;
-- at most 300 Denver/Chicago markers are rendered at once;
-- the source panel explicitly shows when the query contains more records than are currently rendered;
-- users are asked to zoom in rather than having excess records silently disappear from the visible layer.
+See `docs/PLACES_AND_NATURE.md` for the detailed source-class policy.
 
 ## OSM change ledger
 
@@ -225,14 +232,13 @@ Peekaboo includes:
 
 Peekaboo treats public infrastructure as shared infrastructure.
 
-- Overpass endpoint failover with cooldowns and request budgets;
-- `Retry-After` awareness;
-- bounded adaptive queries;
-- user-triggered Nominatim place search without autocomplete;
-- session caching to avoid unnecessary repeat requests;
-- source-specific timeouts and failure isolation;
-- viewport-bounded official ArcGIS camera queries instead of whole-state downloads where practical;
-- no public API credentials committed to the client bundle.
+- Overpass endpoint failover with cooldowns and request budgets.
+- `Retry-After` awareness.
+- bounded adaptive queries.
+- user-triggered Nominatim place search without autocomplete.
+- session caching to avoid unnecessary repeat requests.
+- source-specific timeouts and failure isolation.
+- viewport-bounded official ArcGIS camera queries instead of whole-state downloads where practical.
 
 ## Privacy and security boundary
 
@@ -254,10 +260,10 @@ Production build:
 npm run build
 ```
 
-The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization, shared ArcGIS query semantics, Caltrans CCTV, Iowa DOT, Denver/CDOT and Chicago/Illinois camera normalization/query semantics.
+The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization, shared ArcGIS query semantics, transportation-camera adapters, metro coverage-state semantics and curated Places + Nature source provenance.
 
 ## Data-source responsibility
 
-Peekaboo does not control upstream OpenStreetMap, USGS, Caltrans, Iowa DOT, CDOT, Illinois camera services or other providers. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
+Peekaboo does not control upstream OpenStreetMap, USGS, transportation agencies, NPS or commercial public-camera publishers. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
 
 The interface is designed to expose those distinctions instead of hiding them.
