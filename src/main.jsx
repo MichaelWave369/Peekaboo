@@ -10,11 +10,13 @@ import './v10.css'
 import './v11.css'
 import './v12.css'
 import './v13.css'
+import './v14.css'
 import './leafletRegistry.js'
 import App from './App.jsx'
 import AddressSearchPortal from './AddressSearchPortal.jsx'
 import PublicCamEnhancer from './PublicCamEnhancer.jsx'
 import OfficialFeedEnhancer from './OfficialFeedEnhancer.jsx'
+import CaltransFeedEnhancer from './CaltransFeedEnhancer.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -24,6 +26,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AddressSearchPortal />
       <PublicCamEnhancer />
       <OfficialFeedEnhancer />
+      <CaltransFeedEnhancer />
     </ErrorBoundary>
   </React.StrictMode>,
 )
