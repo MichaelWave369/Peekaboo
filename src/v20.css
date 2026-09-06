@@ -1,0 +1,65 @@
+/* Peekaboo v2.0: institution-official sources + Great Lakes views. */
+
+.map-filter-chips .place-mode-institution.active {
+  border-color: #7f5bb7;
+  background: #f4effb;
+  color: #533687;
+}
+.map-filter-chips .place-mode-institution strong { color: #6f4da6; }
+
+.map-filter-chips .place-mode-greatLakes.active {
+  border-color: #318aa7;
+  background: #edf9fc;
+  color: #1f647b;
+}
+.map-filter-chips .place-mode-greatLakes strong { color: #2a7f99; }
+
+.place-mode-institution.active::before,
+.place-mode-greatLakes.active::before {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 8px;
+}
+.place-mode-institution.active::before { content: '◈'; }
+.place-mode-greatLakes.active::before { content: '≈'; }
+
+.place-feed-marker.institution-official {
+  border-color: #b492e7;
+  background: #34214f;
+  color: #fbf7ff;
+  box-shadow: 0 0 0 3px rgba(180,146,231,.18), 0 2px 9px rgba(0,0,0,.42);
+}
+.place-feed-marker.institution {
+  border-color: #c3a4ef;
+  background: #3c2859;
+}
+.place-feed-marker.great-lakes {
+  border-color: #6bc5dc;
+  background: #153f4b;
+  color: #effcff;
+  box-shadow: 0 0 0 3px rgba(107,197,220,.17), 0 2px 9px rgba(0,0,0,.42);
+}
+
+.place-source-pill.institution {
+  border: 1px solid #70589d;
+  background: #261b39;
+  color: #d9c3ff;
+}
+
+.place-row i.publisher-institution-official {
+  border-color: #69568c;
+  color: #cdb5ef;
+}
+.place-row i.publisher-government-official {
+  border-color: #3b5d58;
+  color: #7dd6c3;
+}
+.place-row i.publisher-commercial-public {
+  border-color: #71598e;
+  color: #d2b4ed;
+}
+
+@media (max-width: 560px) {
+  .map-filter-chips .place-mode-institution,
+  .map-filter-chips .place-mode-greatLakes { scroll-snap-align: start; }
+}
