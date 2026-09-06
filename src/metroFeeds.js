@@ -104,16 +104,7 @@ function writeCache(prefix, bounds, result) {
   try { storage()?.setItem(key, JSON.stringify({ ...result, savedAt: Date.now() })) } catch { /* optional cache */ }
 }
 
-async function fetchArcgisSource({
-  endpoint,
-  bounds,
-  signal,
-  force,
-  fields,
-  sourceLabel,
-  cachePrefix,
-  normalize,
-}) {
+async function fetchArcgisSource({ endpoint, bounds, signal, force, fields, sourceLabel, cachePrefix, normalize }) {
   const url = buildArcgisEnvelopeQuery({ endpoint, bounds, outFields: fields, maxRecords: MAX_RECORDS })
   const fingerprint = envelopeFingerprint(bounds)
   if (!url || !fingerprint) throw new Error(`${sourceLabel} query requires valid map bounds.`)
@@ -186,7 +177,7 @@ export function normalizeCdotCamera(feature = {}) {
     hasVideo: ['video', 'hls'].includes(kind),
     inlineEligible: Boolean(publishedUrl.startsWith('https://') && ['image', 'video', 'hls'].includes(kind)),
     viewerUrl: CDOT_VIEWER_URL,
-    sourceEndpointClass: 'official-cdot-gis-host',
+    sourceEndpointClass: 'official-cdot-gis-test-host',
   }
 }
 
@@ -205,9 +196,9 @@ export function normalizeIllinoisCamera(feature = {}) {
   return {
     id: `official/illinois-dot-cctv/${objectId}`,
     sourceClass: 'official-public-feed',
-    sourceKey: 'illinois-dot-cctv',
-    sourceLabel: 'Illinois Department of Transportation traffic-camera public service',
-    sourceRole: 'official transportation agency',
+    sourceKey: 'illinois-public-traffic-cameras',
+    sourceLabel: 'Illinois public traffic-camera ArcGIS service',
+    sourceRole: 'public transportation camera service',
     objectId: String(objectId),
     name: clean(attributes.CameraLocation) || `Illinois Traffic Camera ${objectId}`,
     direction: clean(attributes.CameraDirection),
@@ -231,7 +222,7 @@ export function parseCdotPayload(payload = {}) {
 }
 
 export function parseIllinoisPayload(payload = {}) {
-  const parsed = parseArcgisFeaturePayload(payload, { sourceLabel: 'Illinois traffic-camera source' })
+  const parsed = parseArcgisFeaturePayload(payload, { sourceLabel: 'Illinois public traffic-camera source' })
   return { items: dedupeById(parsed.features.map(normalizeIllinoisCamera).filter(Boolean)), truncated: parsed.truncated }
 }
 
@@ -244,35 +235,17 @@ export function buildIllinoisQuery(bounds) {
 }
 
 export function fetchCdotCameras(bounds, signal, { force = false } = {}) {
-  return fetchArcgisSource({
-    endpoint: CDOT_CAMERA_ENDPOINT,
-    bounds,
-    signal,
-    force,
-    fields: CDOT_FIELDS,
-    sourceLabel: 'CDOT streaming-camera source',
-    cachePrefix: 'peekaboo:official:cdot:v1:',
-    normalize: normalizeCdotCamera,
-  })
+  return fetchArcgisSource({ endpoint: CDOT_CAMERA_ENDPOINT, bounds, signal, force, fields: CDOT_FIELDS, sourceLabel: 'CDOT streaming-camera source', cachePrefix: 'peekaboo:official:cdot:v1:', normalize: normalizeCdotCamera })
 }
 
 export function fetchIllinoisCameras(bounds, signal, { force = false } = {}) {
-  return fetchArcgisSource({
-    endpoint: ILLINOIS_CAMERA_ENDPOINT,
-    bounds,
-    signal,
-    force,
-    fields: ILLINOIS_FIELDS,
-    sourceLabel: 'Illinois traffic-camera source',
-    cachePrefix: 'peekaboo:official:illinois:v1:',
-    normalize: normalizeIllinoisCamera,
-  })
+  return fetchArcgisSource({ endpoint: ILLINOIS_CAMERA_ENDPOINT, bounds, signal, force, fields: ILLINOIS_FIELDS, sourceLabel: 'Illinois public traffic-camera source', cachePrefix: 'peekaboo:official:illinois:v1:', normalize: normalizeIllinoisCamera })
 }
 
 export const MAJOR_METRO_COVERAGE = [
   { city: 'Los Angeles', region: 'CA', status: 'in-app', source: 'Caltrans CCTV', viewerUrl: 'https://quickmap.dot.ca.gov/' },
   { city: 'Denver', region: 'CO', status: 'in-app', source: 'CDOT / COtrip', viewerUrl: CDOT_VIEWER_URL },
-  { city: 'Chicago', region: 'IL', status: 'in-app', source: 'Illinois traffic cameras', viewerUrl: ILLINOIS_VIEWER_URL },
+  { city: 'Chicago', region: 'IL', status: 'in-app', source: 'Illinois public traffic cameras', viewerUrl: ILLINOIS_VIEWER_URL },
   { city: 'New York City', region: 'NY', status: 'key-required', source: '511NY', viewerUrl: 'https://www.511ny.org/cctv' },
   { city: 'Miami', region: 'FL', status: 'official-viewer', source: 'FL511', viewerUrl: 'https://www.fl511.com/cctv' },
   { city: 'Detroit', region: 'MI', status: 'official-viewer', source: 'MDOT Mi Drive', viewerUrl: 'https://mdotjboss.state.mi.us/MiDrive/cameras' },
