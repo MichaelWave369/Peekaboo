@@ -1,0 +1,43 @@
+/* Peekaboo v1.9: wildlife + aviation-weather place shortcuts. */
+
+.map-filter-chips .place-mode-wildlife.active {
+  border-color: #5d8f3f;
+  background: #eef9e8;
+  color: #315e20;
+}
+.map-filter-chips .place-mode-wildlife strong { color: #4f8036; }
+
+.map-filter-chips .place-mode-aviation.active {
+  border-color: #4a86bd;
+  background: #edf6ff;
+  color: #285f91;
+}
+.map-filter-chips .place-mode-aviation strong { color: #3e78ad; }
+
+.place-feed-marker.wildlife {
+  border-color: #8bd069;
+  background: #26461f;
+  color: #f3ffed;
+  box-shadow: 0 0 0 3px rgba(139,208,105,.18), 0 2px 9px rgba(0,0,0,.42);
+}
+
+.place-feed-marker.aviation {
+  border-color: #79b9ef;
+  background: #173d59;
+  color: #eff9ff;
+  box-shadow: 0 0 0 3px rgba(121,185,239,.16), 0 2px 9px rgba(0,0,0,.42);
+}
+
+.place-mode-wildlife.active::before,
+.place-mode-aviation.active::before {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 8px;
+}
+.place-mode-wildlife.active::before { content: '◉'; }
+.place-mode-aviation.active::before { content: '✈'; }
+
+@media (max-width: 560px) {
+  .map-filter-chips .place-mode-wildlife,
+  .map-filter-chips .place-mode-aviation { scroll-snap-align: start; }
+}
