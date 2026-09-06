@@ -8,9 +8,45 @@ Peekaboo is a client-side public-data map for exploring mapped surveillance infr
 
 **Live site:** https://michaelwave369.github.io/Peekaboo/
 
-## Current release: v2.0.0
+## Current release: v2.2.0
 
-Peekaboo now spans several deliberately separate evidence lanes:
+v2.2 begins consolidating the product around the distinctions Peekaboo already enforced in its data model.
+
+### Two browse modes
+
+**SURVEILLANCE**
+
+- OpenStreetMap surveillance records queried on demand for the current viewport.
+- Flock, ALPR, camera, public-space and park/recreation OSM filters.
+- OSM-published webcam links remain OSM evidence and never become official-source records.
+- OSM results can be browsed as a first-class in-view list after a successful scan.
+- Selected OSM records can be shared through a hash-safe `record=` permalink.
+
+**PUBLIC VIEWS**
+
+- intentionally public government, institution and clearly labeled commercial camera sources;
+- USGS, NOAA, DOT/511, parks, wildlife, FAA WeatherCams, zoos/aquariums, Great Lakes, harbors and tourism sources;
+- source-specific media/status semantics rather than one generic `camera_is_live=true` claim.
+
+Switching browse modes changes which evidence family is presented and interactive. It does not convert one source class into another.
+
+## First-run contract
+
+Peekaboo explains three ideas on first use:
+
+1. **Public views** may already be listed on the map.
+2. **Surveillance** from OpenStreetMap is queried only when the user presses **Scan this view**.
+3. **Provenance** matters: a published link, source claim and physical-camera status are different things.
+
+**Use my location** moves the map only. It never starts an OSM scan automatically. After geolocation, Peekaboo visually nudges **Scan this view** so the next action is explicit.
+
+The last viewport is stored locally in the browser. A shared URL with an explicit `map=` state always wins over local history.
+
+The **What works here** panel reports geographic source-policy hints such as `IN APP`, `OFFICIAL VIEWER`, `KEY REQUIRED` and `SCAN ON DEMAND`. These are product-coverage hints, not claims that a listed system is the only camera source in an area.
+
+## Evidence lanes
+
+Peekaboo keeps these sources deliberately separate:
 
 1. **OpenStreetMap / Overpass surveillance records**
    - cameras, ALPR, Flock Safety claims, guards/watched areas, gunshot detectors and other mapped surveillance objects;
@@ -20,7 +56,7 @@ Peekaboo now spans several deliberately separate evidence lanes:
 2. **OSM-published public webcam links**
    - a surveillance record becomes viewable only when OSM explicitly publishes a valid `contact:webcam=*` URL;
    - published-link provenance is separate from current reachability;
-   - known stale providers may use an official fallback directory without erasing the original OSM URL.
+   - provider fallbacks never erase the original OSM URL.
 
 3. **Machine-readable official camera sources**
    - USGS Volcano Hazards Program / Ashcam;
@@ -31,7 +67,7 @@ Peekaboo now spans several deliberately separate evidence lanes:
 
 4. **NOAA environmental cameras**
    - NDBC BuoyCAM current-image stations;
-   - NOAA Great Lakes Environmental Research Laboratory station webcams and current observation pages.
+   - NOAA Great Lakes Environmental Research Laboratory webcam/observation stations.
 
 5. **Curated Places + Nature sources**
    - National Park Service webcams;
@@ -41,120 +77,52 @@ Peekaboo now spans several deliberately separate evidence lanes:
    - institution-published zoo and aquarium cameras;
    - separately labeled public-commercial tourism streams.
 
-## v2.0 publisher model
-
-Peekaboo no longer treats all curated publishers as a government-vs-commercial binary.
+## Publisher model
 
 ### GOVERNMENT OFFICIAL
 
-The public page is published by a government agency or government science/service program.
+Published by a government agency or government science/service program.
 
-Examples:
-
-- National Park Service
-- U.S. Fish & Wildlife Service
-- Federal Aviation Administration
-- NOAA / NDBC / GLERL
-- state DOT / 511 systems
+Examples: NPS, USFWS, FAA, NOAA/NDBC/GLERL and state DOT/511 systems.
 
 ### INSTITUTION OFFICIAL
 
-The public page is published by the institution that operates the zoo, aquarium, observatory, conservation facility or similar venue.
+Published by the institution that operates the zoo, aquarium, observatory, conservation facility or similar venue.
 
-Current v2.0 examples:
+Current examples include:
 
-- **Smithsonian National Zoo and Conservation Biology Institute**
-- **Monterey Bay Aquarium**
-- **San Diego Zoo Wildlife Alliance**
+- Smithsonian National Zoo and Conservation Biology Institute
+- Monterey Bay Aquarium
+- San Diego Zoo Wildlife Alliance
 
-`institution-official` does not mean government-owned and does not mean every image is continuously live. It means the institution itself is the publisher of the public camera collection.
+`institution-official` does not mean government-owned and does not mean a camera is continuously live. It means the institution itself publishes the public camera collection.
 
 ### PUBLIC COMMERCIAL
 
-The source is intentionally public but is not represented as government- or institution-owned.
-
-Examples include selected EarthCam, PTZtv and other tourism/landmark views.
+Intentionally public sources that are not represented as government- or institution-owned, including selected EarthCam, PTZtv and tourism/landmark views.
 
 A camera showing a place is not automatically owned or endorsed by the place it shows.
 
-## v2.0 source shortcuts
+## Selected-record links
 
-The horizontally scrollable source rail includes filtered views over canonical source records rather than duplicate datasets:
+v2.2 adds selected OSM record permalinks.
 
-- **PLACES**
-- **WILDLIFE**
-- **FAA WX**
-- **ZOO / AQUARIUM**
-- **GREAT LAKES**
-- **NOAA BUOYS**
-- plus OSM, USGS and transportation-source controls
+A shared record URL preserves:
 
-A record therefore cannot drift into contradictory forms merely because it appears under more than one user-facing category.
+- map center/zoom;
+- active OSM filters and contexts;
+- browse mode;
+- selected public OSM record ID.
 
-## New v2.0 institution sources
+Opening a record permalink does **not** silently query OSM. The map restores the shared state and tells the user to **Scan this view** before the linked record can be loaded.
 
-### Smithsonian National Zoo
+## OSM in-view results
 
-Peekaboo links to the National Zoo's institution-published live animal camera collection, including giant pandas, elephants, lions, black-footed ferrets and naked mole-rats.
+After a successful current-viewport scan, Surveillance mode exposes an **OSM RESULTS** sheet.
 
-### Monterey Bay Aquarium
+The sheet is a browsing surface over the already accepted OSM result set. If the map moves, the list becomes stale and is disabled until the current viewport is rescanned.
 
-Peekaboo links to the Aquarium's public live-cam collection including sea otters, jellies, kelp forest, aviary, sharks, open-sea exhibits and the Monterey Bay outdoor view. Some exhibit cams publish daytime live hours and may use prerecorded footage outside those hours.
-
-### San Diego Zoo Wildlife Alliance
-
-Peekaboo exposes separate San Diego Zoo and Safari Park records pointing to the Wildlife Alliance's public live-camera collection. The source itself warns that animals may be indoors or out of frame.
-
-These pages remain external-only. Peekaboo does not scrape embedded player internals or guess stream URLs.
-
-## New v2.0 NOAA Great Lakes sources
-
-The **GREAT LAKES** shortcut initially includes official NOAA / Great Lakes Environmental Research Laboratory stations such as:
-
-- South Haven, MI
-- Thunder Bay Island, MI
-- Alpena, MI
-- Muskegon Pier Light, MI
-- Toledo Channel Marker #2, western Lake Erie
-
-These sources combine environmental observations with current/browsable webcam imagery. Update cadence is preserved only when the source page explicitly states it.
-
-## Major metro coverage
-
-| Metro | Peekaboo status | Public source |
-| --- | --- | --- |
-| Los Angeles | **IN APP** | Caltrans CCTV / QuickMap |
-| Denver | **IN APP** | CDOT / COtrip |
-| Chicago | **IN APP** | Illinois public traffic cameras |
-| New York City | **KEY REQUIRED** | 511NY camera API |
-| Miami | **OFFICIAL VIEWER** | FL511 |
-| Detroit | **OFFICIAL VIEWER** | MDOT Mi Drive |
-| Tucson | **KEY REQUIRED** | AZ511 camera API |
-| Austin | **OFFICIAL VIEWER** | TxDOT / DriveTexas |
-
-Peekaboo will not publish API credentials in the GitHub Pages client bundle. Sources requiring private keys belong behind a future protected proxy.
-
-## What Peekaboo is
-
-- a transparency and civic-tech visualization tool;
-- a map-first browser for public surveillance metadata;
-- a provenance-aware public camera atlas;
-- a viewer/index for media intentionally published by upstream sources;
-- a way to compare OSM records through time without confusing database change with physical-device change.
-
-## What Peekaboo is not
-
-Peekaboo does **not**:
-
-- scan networks or discover cameras;
-- probe camera IPs, ports, credentials or alternate stream paths;
-- bypass authentication;
-- guess hidden or undocumented feed URLs;
-- convert an ordinary surveillance marker into a viewable camera;
-- identify surveillance blind spots or provide camera-avoidance routing;
-- claim that an unmapped area has no surveillance;
-- treat a deleted/stale OSM record as proof that physical hardware was removed;
-- relabel a third-party tourism camera as an official property, city or institution camera.
+The UI renders at most 100 list rows at once while preserving and reporting the full filtered record count. A UI rendering cap is never presented as a source-data count.
 
 ## OSM acquisition reliability
 
@@ -172,31 +140,6 @@ Peekaboo includes:
 - previous-known-good preservation after failed refreshes;
 - explicit **VIEW MOVED • RESCAN** state.
 
-## Official-source reliability
-
-Source adapters are isolated from one another and from OSM.
-
-Common patterns include:
-
-- viewport-bounded queries where the upstream API supports them;
-- fail-closed transfer-limit handling;
-- source-specific caching and timeouts;
-- stale-view invalidation;
-- safe public URL validation;
-- no media autoplay;
-- no inferred stream paths;
-- source-specific status semantics instead of one universal `camera_is_live=true` fiction.
-
-## NOAA / NDBC BuoyCAMs
-
-The **NOAA BUOYS** layer uses vetted NDBC station IDs and NOAA's documented current-image endpoint.
-
-- images load only after user action;
-- station IDs and coordinates are validated;
-- duplicate station IDs are removed deterministically;
-- failed current images are treated as source availability conditions rather than proof of camera removal;
-- Peekaboo does not derive alternate NOAA image paths.
-
 ## OSM change ledger
 
 Peekaboo can save a local baseline for a scanned OSM viewport and compare a later scan of the same area.
@@ -206,7 +149,53 @@ Peekaboo can save a local baseline for a scanned OSM viewport and compare a late
 - `METADATA CHANGED`
 - `UNCHANGED`
 
-These labels describe OpenStreetMap records only. They are not physical-device status claims.
+The map can surface nonzero ledger deltas directly, but these labels remain database-record claims. `REMOVED FROM OSM` never means “physical camera removed.”
+
+## Major metro coverage
+
+| Metro | Peekaboo status | Public source |
+| --- | --- | --- |
+| Los Angeles | **IN APP** | Caltrans CCTV / QuickMap |
+| Denver | **IN APP** | CDOT / COtrip |
+| Chicago | **IN APP** | Illinois public traffic cameras |
+| New York City | **KEY REQUIRED** | 511NY camera API |
+| Miami | **OFFICIAL VIEWER** | FL511 |
+| Detroit | **OFFICIAL VIEWER** | MDOT Mi Drive |
+| Tucson | **KEY REQUIRED** | AZ511 camera API |
+| Austin | **OFFICIAL VIEWER** | TxDOT / DriveTexas |
+
+Peekaboo will not publish API credentials in the GitHub Pages client bundle. Sources requiring private keys belong behind a protected proxy if native integration is added later.
+
+## What Peekaboo is not
+
+Peekaboo does **not**:
+
+- scan networks or discover cameras;
+- probe camera IPs, ports, credentials or alternate stream paths;
+- bypass authentication;
+- guess hidden or undocumented feed URLs;
+- convert an ordinary surveillance marker into a viewable camera;
+- identify surveillance blind spots or provide camera-avoidance routing;
+- claim that an unmapped area has no surveillance;
+- treat a deleted/stale OSM record as proof that physical hardware was removed;
+- relabel a third-party tourism camera as an official property, city or institution camera.
+
+## v2.2 state architecture
+
+v2.2 introduces a shared React product-state contract for:
+
+- viewport;
+- scan state;
+- browse mode;
+- selected/pending OSM record ID;
+- stale/current query state;
+- OSM ledger delta.
+
+The first-run/coverage layer consumes those values directly instead of inferring them from button text or ledger-panel DOM mutations.
+
+This is the first structural step toward a generic source-layer/source-drawer architecture. Existing source adapters remain isolated and tested while that consolidation proceeds incrementally.
+
+New product styling now lands in `src/product.css` instead of creating another version-numbered CSS file. Earlier versioned CSS remains intact for behavior preservation until a dedicated design-system cleanup can safely replace it.
 
 ## Development
 
@@ -222,7 +211,9 @@ Production build:
 npm run build
 ```
 
-The regression suite covers OSM normalization, Flock evidence, context filters, address search, adaptive queries, endpoint health, shard consistency, snapshots/change-ledger behavior, public-webcam URL safety, official camera adapters, NOAA BuoyCAMs and the v2.0 government/institution/commercial curated-source contract.
+The regression suite covers OSM normalization, Flock evidence, context filters, address search, adaptive queries, endpoint health, shard consistency, snapshots/change-ledger behavior, public-webcam URL safety, official camera adapters, NOAA BuoyCAMs, curated publisher classes, v2.1 viewport/onboarding behavior and v2.2 mode/record-permalink navigation semantics.
+
+See `CHANGELOG.md` and the files under `docs/` for release-specific contracts.
 
 ## Data-source responsibility
 
