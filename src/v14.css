@@ -1,0 +1,188 @@
+/* Peekaboo v1.4 Caltrans official public traffic-camera layer. */
+
+.caltrans-chip-host { display: contents; }
+.map-filter-chips .caltrans-chip.active {
+  border-color: #d7893b;
+  background: #fff5e9;
+  color: #a25c16;
+}
+.map-filter-chips .caltrans-chip strong { color: #b26d28; }
+.map-filter-chips .caltrans-chip.stale {
+  border-color: #a67d2f;
+  background: #fff8e8;
+  color: #76561c;
+}
+.map-filter-chips .caltrans-chip.stale strong {
+  color: #9a6b17;
+  font-size: 7px;
+}
+
+.caltrans-source-panel { border-color: #5f452b; }
+.caltrans-source-panel .panel-heading span:last-child { color: #f1a65a; }
+.caltrans-source-grid strong { color: #ffd5aa; }
+.caltrans-stale-note {
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid #7d622d;
+  border-radius: 8px;
+  background: #211b0f;
+  color: #bcae8b;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.caltrans-stale-note strong,
+.caltrans-stale-note span { display: block; }
+.caltrans-stale-note strong { color: #f0cf77; letter-spacing: .08em; }
+.caltrans-stale-note span { margin-top: 4px; }
+
+.caltrans-feed-marker {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #e7a058;
+  border-radius: 50%;
+  background: #5a3215;
+  color: #fff2df;
+  box-shadow: 0 2px 8px rgba(0,0,0,.42);
+  font-size: 10px;
+  font-weight: 950;
+}
+.caltrans-feed-marker.stream {
+  box-shadow: 0 0 0 3px rgba(231,160,88,.22), 0 2px 8px rgba(0,0,0,.42);
+}
+.caltrans-feed-marker.out-of-service {
+  border-color: #8f6868;
+  background: #3d2525;
+  color: #debaba;
+  box-shadow: 0 2px 8px rgba(0,0,0,.42);
+}
+.caltrans-feed-marker.unknown { border-style: dashed; }
+
+#peekaboo-caltrans-drawer-host { position: relative; z-index: 915; }
+.caltrans-feed-drawer { z-index: 925; }
+.caltrans-source-pill {
+  display: inline-flex;
+  margin: 7px 0 12px;
+  padding: 5px 8px;
+  border: 1px solid #83552c;
+  border-radius: 999px;
+  background: #2b1a0e;
+  color: #ffc991;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.caltrans-source-pill.stream {
+  border-color: #9b6330;
+  background: #3a2110;
+  color: #ffd2a0;
+}
+
+.caltrans-service-note {
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px solid #4d4f50;
+  border-radius: 8px;
+  background: #11171a;
+  color: #a6b1b6;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.caltrans-service-note strong,
+.caltrans-service-note span { display: block; }
+.caltrans-service-note strong {
+  color: #d9a564;
+  font-size: 8px;
+  letter-spacing: .11em;
+}
+.caltrans-service-note span {
+  margin-top: 4px;
+  color: #edf2f4;
+  font-weight: 800;
+}
+.caltrans-service-note p { margin: 7px 0 0; }
+.caltrans-service-note.in-service { border-color: #3f6b50; }
+.caltrans-service-note.in-service strong { color: #8ad8a7; }
+.caltrans-service-note.out-of-service { border-color: #724449; }
+.caltrans-service-note.out-of-service strong { color: #e9a0a8; }
+.caltrans-source-note { border-color: #67492c; }
+.caltrans-source-note strong { color: #e4a25f; }
+
+.caltrans-feed-load,
+.caltrans-feed-open {
+  width: 100%;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 9px;
+  padding: 8px 10px;
+  border: 1px solid #b56f31;
+  border-radius: 8px;
+  background: #9a571f;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.caltrans-feed-load.image,
+.caltrans-feed-open.image {
+  border-color: #5e7180;
+  background: #18232b;
+  color: #d4e0e6;
+}
+.caltrans-feed-open.stream { background: #6f421e; }
+.caltrans-feed-load:hover,
+.caltrans-feed-open:hover { filter: brightness(1.07); }
+
+.caltrans-feed-media {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.caltrans-feed-media img,
+.caltrans-feed-media video {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border: 1px solid #39464d;
+  border-radius: 8px;
+  background: #05080a;
+}
+.caltrans-feed-media button {
+  min-height: 36px;
+  border: 1px solid #4b5d68;
+  border-radius: 7px;
+  background: #121c22;
+  color: #bdcbd1;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+.caltrans-feed-media small {
+  color: #819099;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.official-feed-error a {
+  display: inline-block;
+  margin-top: 7px;
+  color: #ffb6c2;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (pointer: coarse) {
+  .caltrans-feed-load,
+  .caltrans-feed-open,
+  .caltrans-feed-media button { min-height: 44px; }
+}
+
+@media (max-width: 560px) {
+  .caltrans-feed-media img,
+  .caltrans-feed-media video { max-height: 38vh; }
+}
