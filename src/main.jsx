@@ -18,6 +18,7 @@ import './v18.css'
 import './v19.css'
 import './v20.css'
 import './v21.css'
+import './product.css'
 import './leafletRegistry.js'
 import App from './App.jsx'
 import AddressSearchPortal from './AddressSearchPortal.jsx'
@@ -30,20 +31,23 @@ import PlaceFeedEnhancer from './PlaceFeedEnhancer.jsx'
 import NdbcFeedEnhancer from './NdbcFeedEnhancer.jsx'
 import TeachMapEnhancer from './TeachMapEnhancer.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
+import { ProductStateProvider } from './productState.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
-      <AddressSearchPortal />
-      <PublicCamEnhancer />
-      <OfficialFeedEnhancer />
-      <CaltransFeedEnhancer />
-      <IowaFeedEnhancer />
-      <MetroFeedEnhancer />
-      <PlaceFeedEnhancer />
-      <NdbcFeedEnhancer />
-      <TeachMapEnhancer />
+      <ProductStateProvider>
+        <App />
+        <AddressSearchPortal />
+        <PublicCamEnhancer />
+        <OfficialFeedEnhancer />
+        <CaltransFeedEnhancer />
+        <IowaFeedEnhancer />
+        <MetroFeedEnhancer />
+        <PlaceFeedEnhancer />
+        <NdbcFeedEnhancer />
+        <TeachMapEnhancer />
+      </ProductStateProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 )
