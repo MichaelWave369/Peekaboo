@@ -67,11 +67,17 @@ function stampRelease() {
   const version = release?.querySelector('.panel-heading span:last-child')
   setTextIfChanged(version, RELEASE_SHORT)
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v18-noaa-nature]')) {
+    const item = document.createElement('li')
+    item.dataset.v18NoaaNature = 'true'
+    item.textContent = 'NOAA/NDBC BuoyCAMs add documented current ocean images, while the official NPS nature registry expands to Yosemite, Zion, Mount Rainier, Glacier, Great Smokies and Acadia.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v17-places]')) {
     const item = document.createElement('li')
     item.dataset.v17Places = 'true'
     item.textContent = 'Places + Nature adds curated Yellowstone, Grand Canyon, Las Vegas, Atlantic City, Key West and Anaheim/Disneyland-area public views with explicit official-vs-commercial provenance, plus a polished horizontal source rail.'
-    list.prepend(item)
+    list.appendChild(item)
   }
   if (list && !list.querySelector('[data-v16-major-metros]')) {
     const item = document.createElement('li')
@@ -213,7 +219,7 @@ export default function PublicCamEnhancer() {
         setNoticeHost((current) => current === notice ? current : notice)
       }
 
-      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer):not(.caltrans-feed-drawer):not(.iowa-feed-drawer):not(.metro-feed-drawer):not(.place-feed-drawer)')
+      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer):not(.caltrans-feed-drawer):not(.iowa-feed-drawer):not(.metro-feed-drawer):not(.place-feed-drawer):not(.ndbc-feed-drawer)')
       const raw = drawer?.querySelector('.raw-tags pre')
       if (!drawer || !raw) {
         rawTextRef.current = ''
