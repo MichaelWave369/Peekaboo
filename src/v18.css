@@ -1,0 +1,204 @@
+/* Peekaboo v1.8 NOAA/NDBC + nature expansion */
+
+.ndbc-chip-host { display: contents; }
+.map-filter-chips .ndbc-feed-chip.active {
+  border-color: #2a8fb7;
+  background: #edfaff;
+  color: #176786;
+}
+.map-filter-chips .ndbc-feed-chip strong { color: #1b7da4; }
+
+.ndbc-source-panel { border-color: #224c60; }
+.ndbc-source-panel .panel-heading span:last-child { color: #6bd8ff; }
+.ndbc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+.ndbc-summary-grid > div {
+  padding: 9px;
+  border: 1px solid #294452;
+  border-radius: 8px;
+  background: #0d171c;
+}
+.ndbc-summary-grid span,
+.ndbc-summary-grid strong { display: block; }
+.ndbc-summary-grid span {
+  color: #7f939d;
+  font-size: 7px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ndbc-summary-grid strong {
+  margin-top: 4px;
+  color: #9be7ff;
+  font-size: 14px;
+}
+
+.ndbc-station-list {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0 10px;
+  padding-right: 2px;
+}
+.ndbc-station-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 9px;
+  border: 1px solid #294552;
+  border-radius: 8px;
+  background: #0f181d;
+  color: #d8e8ef;
+  text-align: left;
+  cursor: pointer;
+}
+.ndbc-station-list button:hover { border-color: #3e7992; background: #11232b; }
+.ndbc-station-list span { min-width: 0; }
+.ndbc-station-list strong,
+.ndbc-station-list small { display: block; }
+.ndbc-station-list strong { font-size: 9px; }
+.ndbc-station-list small {
+  margin-top: 3px;
+  color: #7f949e;
+  font-size: 7px;
+  line-height: 1.35;
+}
+.ndbc-station-list b {
+  flex: 0 0 auto;
+  color: #74d8ff;
+  font-size: 7px;
+  letter-spacing: .08em;
+}
+.ndbc-empty-note {
+  margin: 9px 0;
+  padding: 9px;
+  border: 1px solid #33464e;
+  border-radius: 8px;
+  background: #10171a;
+  color: #889aa2;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.ndbc-feed-marker {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #57c9ee;
+  border-radius: 50%;
+  background: #07374a;
+  color: #d8f8ff;
+  box-shadow: 0 0 0 3px rgba(87,201,238,.18), 0 2px 9px rgba(0,0,0,.42);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+#peekaboo-ndbc-drawer-host { position: relative; z-index: 940; }
+.ndbc-feed-drawer { z-index: 945; }
+.ndbc-source-pill {
+  display: inline-flex;
+  margin: 7px 0 12px;
+  padding: 5px 8px;
+  border: 1px solid #2b7895;
+  border-radius: 999px;
+  background: #0b3040;
+  color: #9ee8ff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+.ndbc-source-note {
+  margin-bottom: 11px;
+  padding: 11px;
+  border: 1px solid #29556a;
+  border-radius: 8px;
+  background: #0d1920;
+  color: #9db0b9;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.ndbc-source-note strong,
+.ndbc-source-note span { display: block; }
+.ndbc-source-note strong {
+  color: #6bd8ff;
+  font-size: 8px;
+  letter-spacing: .1em;
+}
+.ndbc-source-note span { margin-top: 4px; color: #e8f5fa; font-weight: 800; }
+.ndbc-source-note p { margin: 7px 0 0; }
+
+.ndbc-media-load {
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 10px;
+  border: 1px solid #2a8eb4;
+  border-radius: 8px;
+  background: #116887;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.ndbc-media-load:hover { filter: brightness(1.08); }
+.ndbc-media-box {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ndbc-media-box img {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  border: 1px solid #325563;
+  border-radius: 8px;
+  background: #02080b;
+}
+.ndbc-media-box button,
+.ndbc-feed-drawer .official-feed-error button {
+  min-height: 36px;
+  border: 1px solid #426574;
+  border-radius: 7px;
+  background: #11242c;
+  color: #c7e8f4;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+.ndbc-media-box small {
+  color: #8297a0;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.ndbc-feed-drawer .official-feed-link.secondary { margin-top: 7px; }
+
+/* Keep the growing source rail usable rather than wrapping into a second dashboard. */
+.map-filter-chips {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(79, 98, 107, .55) transparent;
+}
+.map-filter-chips::-webkit-scrollbar { height: 5px; }
+.map-filter-chips::-webkit-scrollbar-track { background: transparent; }
+.map-filter-chips::-webkit-scrollbar-thumb {
+  background: rgba(79, 98, 107, .55);
+  border-radius: 999px;
+}
+
+@media (pointer: coarse) {
+  .ndbc-media-load,
+  .ndbc-media-box button,
+  .ndbc-feed-drawer .official-feed-error button { min-height: 44px; }
+}
+
+@media (max-width: 560px) {
+  .ndbc-media-box img { max-height: 38vh; }
+}
