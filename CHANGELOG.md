@@ -1,5 +1,32 @@
 # Peekaboo changelog
 
+## 1.7.0
+
+Places + Nature expansion with source-rail polish and explicit official-vs-commercial place provenance.
+
+- Added a curated **PLACES** layer for parks, nature, landmark and tourism camera pages.
+- Initial curated coverage includes Yellowstone National Park, Grand Canyon National Park, Las Vegas, Atlantic City, Key West Harbor and the Anaheim / Disneyland Resort area.
+- Added official NPS entries for Yellowstone and Grand Canyon without requiring an NPS API key because Peekaboo links to stable public NPS webcam pages rather than calling the protected API.
+- Added an official RTC / NDOT Las Vegas traffic-camera gateway and kept it separate from a public-commercial EarthCam tourism stream.
+- Added an official NJDOT / 511NJ Atlantic City-area traffic-camera viewer and kept it separate from a public third-party Boardwalk livestream.
+- Added a public Key West Harbor stream from PTZtv / Historic Tours of America with an explicit note that the operator states it is not affiliated with or officially endorsed by the City of Key West.
+- Added a public Anaheim / Disneyland Resort area stream from EarthCam / Hilton Anaheim with an explicit note that it is not an official Disneyland or Disney-operated camera.
+- Curated place sources are external-only. Peekaboo does not copy, restream, scrape hidden media URLs or infer ownership from what appears in the frame.
+- Added a local viewport-aware place registry so moving the map does not require a new network request merely to discover curated place markers.
+- Added source-class badges for **government official** and **public commercial** place feeds.
+- Added regression tests for unique registry IDs, coordinate/URL validation, viewport filtering and the provenance rules that prevent Disneyland-area and Key West cameras from being mislabeled as official property/city feeds.
+- Hardened drawer lifecycle so OSM, official-source, metro and curated-place inspectors do not stack on top of each other.
+- Polished the quick-source row into a single-line horizontally scrollable source rail, reducing header crowding as more source adapters are added.
+- Updated the README, release panel and source-policy documentation for the four-lane evidence model.
+
+### Places + Nature semantics
+
+A curated place record means Peekaboo has a known intentionally public viewer or stream page for that place. It does not mean the publisher is the owner of every landmark visible in the frame.
+
+Government and public-commercial publishers remain separate classes. A third-party camera that happens to show Disneyland, Key West, Las Vegas or Atlantic City is not promoted into an official city, park or property-owner camera.
+
+Curated place records remain outside OpenStreetMap and never enter the OSM change ledger.
+
 ## 1.6.0
 
 Major-metro camera expansion with explicit coverage-state semantics.
@@ -55,7 +82,7 @@ Official transportation-camera expansion with viewport-bound Caltrans feeds.
 
 - Added **Caltrans CCTV** as a second zero-secret official-source adapter alongside USGS Ashcam.
 - Added a **CALTRANS** map chip and dedicated Caltrans source panel.
-- Caltrans requests are scoped to the current map viewport through the official ArcGIS CCTV FeatureServer rather than loading the entire statewide catalog.
+- Caltrans requests are scoped to the current map viewport through the official Caltrans CCTV ArcGIS FeatureServer rather than loading the entire statewide catalog.
 - Added explicit snapshot/video/source-status normalization from Caltrans fields including `currentImageURL`, `streamingVideoURL`, `inService`, route, direction, county and update metadata.
 - Caltrans records remain separate from OSM surveillance objects and the OSM change ledger.
 - Added fail-closed handling for ArcGIS `exceededTransferLimit`; Peekaboo refuses truncated camera datasets and asks the user to zoom in.
