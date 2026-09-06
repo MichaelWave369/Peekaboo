@@ -1,0 +1,219 @@
+/* Peekaboo v1.6 major metro coverage + Denver/Chicago official sources. */
+
+.metro-chip-host { display: contents; }
+.map-filter-chips .metro-source-chip.active.denver {
+  border-color: #4d8ccf;
+  background: #eef6ff;
+  color: #2d68a8;
+}
+.map-filter-chips .metro-source-chip.active.chicago {
+  border-color: #b36dbe;
+  background: #fbf1ff;
+  color: #7a3c87;
+}
+.map-filter-chips .metro-source-chip.stale {
+  border-color: #a98436;
+  background: #fff8e9;
+  color: #7e5f1d;
+}
+.map-filter-chips .metro-source-chip strong { font-variant-numeric: tabular-nums; }
+.map-filter-chips .metro-source-chip.stale strong { font-size: 7px; }
+
+.metro-coverage-panel { border-color: #3e4d5a; }
+.metro-coverage-panel .panel-heading span:last-child { color: #b5c8d3; }
+.metro-coverage-panel .microcopy strong { color: #d9e5ea; }
+
+.metro-source-controls {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 12px;
+}
+.metro-source-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #273944;
+  border-radius: 8px;
+  background: #0b1318;
+}
+.metro-source-control > div strong,
+.metro-source-control > div span { display: block; }
+.metro-source-control > div strong { color: #dbe7ec; font-size: 8px; letter-spacing: .06em; }
+.metro-source-control > div span { margin-top: 3px; color: #728994; font-size: 7px; }
+.metro-source-control button {
+  min-height: 32px;
+  border: 1px solid #3a505d;
+  border-radius: 7px;
+  background: #111d24;
+  color: #a9bec7;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.metro-source-control button.active { border-color: #5d7990; background: #193040; color: #d5e7f0; }
+.metro-source-control button:disabled { opacity: .5; cursor: wait; }
+
+.metro-coverage-list { display: grid; gap: 6px; }
+.metro-coverage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  border: 1px solid #263842;
+  border-radius: 8px;
+  background: #0b1318;
+  color: inherit;
+  text-decoration: none;
+}
+.metro-coverage-row span strong,
+.metro-coverage-row span small { display: block; }
+.metro-coverage-row span strong { color: #dce8ed; font-size: 8px; }
+.metro-coverage-row span small { margin-top: 3px; color: #748a94; font-size: 7px; }
+.metro-coverage-row b {
+  padding: 4px 6px;
+  border-radius: 999px;
+  font-size: 6px;
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+.metro-coverage-row.in-app b { background: #173522; color: #8bddaa; }
+.metro-coverage-row.official-viewer b { background: #182b3d; color: #8fc4f3; }
+.metro-coverage-row.key-required b { background: #392d16; color: #e6c56c; }
+.metro-coverage-row:hover { border-color: #46606e; background: #101b22; }
+.metro-coverage-note { margin: 10px 0 0; color: #718690; font-size: 8px; line-height: 1.5; }
+
+.metro-source-errors { display: grid; gap: 6px; margin-bottom: 8px; }
+.metro-source-errors > div {
+  padding: 8px;
+  border: 1px solid #75404a;
+  border-radius: 8px;
+  background: #211116;
+  color: #c59ca5;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.metro-source-errors strong,
+.metro-source-errors span { display: block; }
+.metro-source-errors strong { color: #ff9eae; letter-spacing: .07em; }
+.metro-source-errors span { margin-top: 4px; }
+
+.metro-feed-marker {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #7fb4ff;
+  border-radius: 50%;
+  background: #173650;
+  color: #e5f2ff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.42);
+  font-size: 10px;
+  font-weight: 950;
+}
+.metro-feed-marker.denver { border-color: #67a7eb; background: #174268; }
+.metro-feed-marker.chicago { border-color: #c082d0; background: #4c2857; }
+.metro-feed-marker.stream { box-shadow: 0 0 0 3px rgba(126, 188, 255, .2), 0 2px 8px rgba(0,0,0,.42); }
+.metro-feed-marker.source-stale { border-style: dashed; filter: saturate(.65); }
+
+#peekaboo-metro-drawer-host { position: relative; z-index: 930; }
+.metro-feed-drawer { z-index: 940; }
+.metro-source-pill {
+  display: inline-flex;
+  margin: 7px 0 12px;
+  padding: 5px 8px;
+  border: 1px solid #4f7592;
+  border-radius: 999px;
+  background: #102130;
+  color: #b6dcf6;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.metro-source-pill.chicago { border-color: #734881; background: #29152f; color: #e4b6ed; }
+.metro-source-pill.denver { border-color: #3f78ac; background: #112d44; color: #b7ddff; }
+
+.metro-source-note,
+.metro-status-note {
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px solid #314653;
+  border-radius: 8px;
+  background: #0c151b;
+  color: #9dafb8;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.metro-source-note strong,
+.metro-source-note span,
+.metro-source-note code,
+.metro-status-note strong,
+.metro-status-note span { display: block; }
+.metro-source-note strong,
+.metro-status-note strong { color: #8ec6ed; font-size: 8px; letter-spacing: .1em; }
+.metro-source-note span,
+.metro-status-note span { margin-top: 4px; color: #e4eef2; font-weight: 800; }
+.metro-source-note code { margin-top: 6px; padding: 5px 6px; background: #070c10; color: #adc0c9; overflow-wrap: anywhere; }
+.metro-source-note p,
+.metro-status-note p { margin: 7px 0 0; }
+
+.metro-media-load,
+.metro-media-open {
+  width: 100%;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 9px;
+  padding: 8px 10px;
+  border: 1px solid #557b96;
+  border-radius: 8px;
+  background: #245b80;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.metro-media-load.image,
+.metro-media-open.image { background: #17252e; border-color: #50636e; color: #d6e1e6; }
+.metro-media-box { display: grid; gap: 8px; margin-bottom: 12px; }
+.metro-media-box img,
+.metro-media-box video {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border: 1px solid #34444d;
+  border-radius: 8px;
+  background: #05080a;
+}
+.metro-media-box button {
+  min-height: 36px;
+  border: 1px solid #4b5d68;
+  border-radius: 7px;
+  background: #121c22;
+  color: #bdcbd1;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+.metro-media-box small { color: #80919a; font-size: 8px; line-height: 1.45; }
+
+@media (pointer: coarse) {
+  .metro-source-control button,
+  .metro-media-load,
+  .metro-media-open,
+  .metro-media-box button { min-height: 44px; }
+}
+
+@media (max-width: 560px) {
+  .metro-coverage-row { grid-template-columns: 1fr; }
+  .metro-coverage-row b { width: max-content; }
+  .metro-media-box img,
+  .metro-media-box video { max-height: 38vh; }
+}
