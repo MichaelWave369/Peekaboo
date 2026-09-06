@@ -4,13 +4,13 @@
 
 > **See what sees you.**
 
-Peekaboo is a client-side public-data map for exploring mapped surveillance infrastructure and intentionally published public camera feeds while preserving source provenance and uncertainty.
+Peekaboo is a client-side public-data map for exploring mapped surveillance infrastructure and intentionally published public camera feeds while preserving provenance, source ownership and uncertainty.
 
 **Live site:** https://michaelwave369.github.io/Peekaboo/
 
-## Current release: v1.7.0
+## Current release: v1.8.0
 
-Peekaboo currently has four distinct evidence lanes:
+Peekaboo now has five distinct evidence lanes:
 
 1. **OpenStreetMap / Overpass surveillance records**
    - Cameras, ALPR, Flock Safety claims, guards/watched areas, gunshot detectors and other mapped surveillance objects.
@@ -22,7 +22,7 @@ Peekaboo currently has four distinct evidence lanes:
    - Peekaboo distinguishes an OSM-published URL from verified reachability.
    - Known stale provider routes can use a current official provider directory while retaining the original OSM URL as provenance.
 
-3. **Official public-camera sources**
+3. **Machine-readable official public-camera sources**
    - **USGS Volcano Hazards Program / Ashcam** current-image cameras.
    - **Caltrans CCTV** traffic-camera snapshots and published video URLs.
    - **Iowa DOT / Iowa 511** public traffic-camera images and video URLs.
@@ -33,8 +33,16 @@ Peekaboo currently has four distinct evidence lanes:
 4. **Curated Places + Nature sources**
    - NPS park webcam pages, official traffic-camera viewers and intentionally public tourism/landmark streams.
    - Government and public-commercial publishers are labeled separately.
-   - Initial coverage includes Yellowstone, Grand Canyon, Las Vegas, Atlantic City, Key West and the Anaheim / Disneyland Resort area.
+   - Current park coverage includes Yellowstone, Grand Canyon, Yosemite, Zion, Mount Rainier, Glacier, Great Smoky Mountains and Acadia.
+   - Current city/landmark coverage includes Las Vegas, Atlantic City, Key West and the Anaheim / Disneyland Resort area.
    - Curated place sources open on the publisher's site and are not restreamed or scraped by Peekaboo.
+
+5. **NOAA / NDBC BuoyCAMs**
+   - A dedicated **NOAA BUOYS** layer for vetted National Data Buoy Center BuoyCAM stations.
+   - The station registry supplies map geography without scraping NOAA on every map move.
+   - Current images are requested directly from NOAA only after the user presses **LOAD CURRENT NOAA IMAGE**.
+   - NDBC's documented current-image endpoint is used exactly as published; Peekaboo does not derive image filenames or alternate camera paths.
+   - NOAA BuoyCAMs remain separate from surveillance, transportation and tourism-camera data.
 
 ## Major metro coverage
 
@@ -87,7 +95,7 @@ Peekaboo uses familiar consumer-map interaction patterns without copying third-p
 - horizontally scrollable quick-source rail;
 - collapsible research panel;
 - marker details drawer / mobile bottom sheet;
-- independently styled OSM, USGS, Caltrans, Iowa DOT, metro and curated-place markers.
+- independently styled OSM, USGS, Caltrans, Iowa DOT, metro, NOAA and curated-place markers.
 
 Address search only moves the map. It does not silently trigger an OSM surveillance scan or an official-source request.
 
@@ -184,14 +192,44 @@ Shared rules include current-viewport querying where applicable, fail-closed tra
 
 The major-metro panel distinguishes **IN APP**, **OFFICIAL VIEWER** and **KEY REQUIRED** sources so a missing adapter is not confused with an absence of cameras.
 
+## NOAA / NDBC BuoyCAM lane
+
+Peekaboo v1.8 adds a dedicated marine-camera layer using NOAA National Data Buoy Center BuoyCAM station IDs and the documented current-image endpoint.
+
+Current seed coverage includes stations near Cape Hatteras, Charleston, Cape Canaveral, Puerto Rico, St. Martin and Boston plus several offshore Atlantic stations.
+
+Robustness rules:
+
+- station IDs and coordinates are validated locally;
+- duplicate station IDs are rejected deterministically;
+- the map does not scrape NOAA's status page on every pan/zoom;
+- media never loads until the user asks for it;
+- current images come directly from `ndbc.noaa.gov`;
+- manual refresh stays on the same documented endpoint;
+- a failed or unavailable current image is surfaced as a source-side availability condition rather than replaced with a guessed URL;
+- the panel links to NOAA's complete BuoyCAM map when the local seed registry does not cover the user's area.
+
+NDBC documents BuoyCAMs as generally operating during daylight and documents its current-image endpoint as refusing images older than its current-image window. Peekaboo therefore does not invent a separate freshness claim.
+
+See `docs/NOAA_NDBC_BUOYCAMS.md` for the source policy.
+
 ## Places + Nature lane
 
-v1.7 adds a curated public-view registry for locations where the publisher exposes a stable public webcam page but a camera-level zero-secret API is not necessarily available.
+The curated public-view registry covers locations where the publisher exposes a stable public webcam page but a camera-level zero-secret API is not necessarily available.
 
-Initial entries include:
+### Official NPS park sources
 
 - **Yellowstone National Park** — official NPS webcam hub including the Old Faithful / Upper Geyser Basin livestream and static park webcams.
 - **Grand Canyon National Park** — official NPS Yavapai Point and South Entrance webcam pages.
+- **Yosemite National Park** — official NPS webcam hub with high-country, air-quality, ski-area and river-condition views.
+- **Zion National Park** — official NPS Temples and Towers of the Virgin webcam.
+- **Mount Rainier National Park** — official NPS Longmire, Paradise and Sunrise-area webcam hub.
+- **Glacier National Park** — official NPS webcam hub with Lake McDonald, Apgar, Logan Pass, Many Glacier, St. Mary and other views.
+- **Great Smoky Mountains National Park** — official NPS current-view cameras with approximately 15-minute updates according to NPS.
+- **Acadia National Park** — official NPS webcam page with Jordan Pond, air-quality and partner-hosted regional views.
+
+### City / landmark sources
+
 - **Las Vegas** — official RTC/NDOT traffic-camera gateway plus a separately labeled EarthCam public tourism stream.
 - **Atlantic City** — official NJDOT / 511NJ traffic-camera viewer plus a separately labeled public Boardwalk livestream.
 - **Key West Harbor** — public PTZtv / Historic Tours of America stream, explicitly labeled as not affiliated with or officially endorsed by the City of Key West.
@@ -239,12 +277,13 @@ Peekaboo treats public infrastructure as shared infrastructure.
 - session caching to avoid unnecessary repeat requests.
 - source-specific timeouts and failure isolation.
 - viewport-bounded official ArcGIS camera queries instead of whole-state downloads where practical.
+- local curated registries where a source does not require live discovery on every map movement.
 
 ## Privacy and security boundary
 
 Peekaboo has no functionality for camera exploitation or private-feed discovery.
 
-Public media URLs are accepted only from explicit upstream public records. URL handling rejects unsupported schemes, credentials, localhost and common private/link-local address ranges before media is offered.
+Public media URLs are accepted only from explicit upstream public records or documented official source patterns. URL handling rejects unsupported schemes, credentials, localhost and common private/link-local address ranges before media is offered.
 
 ## Development
 
@@ -260,10 +299,10 @@ Production build:
 npm run build
 ```
 
-The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization, shared ArcGIS query semantics, transportation-camera adapters, metro coverage-state semantics and curated Places + Nature source provenance.
+The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization, shared ArcGIS query semantics, transportation-camera adapters, metro coverage-state semantics, curated Places + Nature provenance and NOAA/NDBC BuoyCAM station normalization.
 
 ## Data-source responsibility
 
-Peekaboo does not control upstream OpenStreetMap, USGS, transportation agencies, NPS or commercial public-camera publishers. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
+Peekaboo does not control upstream OpenStreetMap, USGS, NOAA/NDBC, transportation agencies, NPS or commercial public-camera publishers. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
 
 The interface is designed to expose those distinctions instead of hiding them.
