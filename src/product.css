@@ -1,0 +1,239 @@
+/* Peekaboo product UI layer. v2.2 begins consolidating new product structures here instead of adding another version-numbered stylesheet. */
+
+.map-mode-switch {
+  position: absolute;
+  z-index: 714;
+  top: 76px;
+  left: 16px;
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid rgba(91, 107, 116, .35);
+  border-radius: 999px;
+  background: rgba(12, 17, 22, .94);
+  box-shadow: 0 2px 12px rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
+}
+.map-mode-switch button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #91a0a6;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.map-mode-switch button.active {
+  background: #edf5df;
+  color: #456019;
+}
+
+/* Mode now determines what the source rail is trying to say. */
+.map-filter-chips { top: 118px !important; }
+.sidebar { top: 166px !important; }
+.osm-filter-chip-group { display: contents; }
+.mode-surveillance #peekaboo-live-cam-chip-host,
+.mode-surveillance #peekaboo-official-cam-chip-host,
+.mode-surveillance #peekaboo-caltrans-chip-host,
+.mode-surveillance #peekaboo-iowa-chip-host,
+.mode-surveillance #peekaboo-metro-chip-host,
+.mode-surveillance #peekaboo-place-chip-host,
+.mode-surveillance #peekaboo-ndbc-chip-host { display: none !important; }
+.mode-public .osm-filter-chip-group { display: none !important; }
+.mode-public .map-mini-legend { display: none; }
+
+.osm-results-toggle {
+  position: absolute;
+  z-index: 712;
+  left: 16px;
+  bottom: 76px;
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgba(83, 103, 112, .35);
+  border-radius: 999px;
+  background: rgba(12, 17, 22, .94);
+  color: #dce5e8;
+  box-shadow: 0 2px 11px rgba(0,0,0,.25);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+.osm-results-toggle strong { margin-left: 6px; color: #c8e78e; }
+.osm-results-toggle.stale { border-color: #81672f; color: #e1cb8e; }
+
+.osm-results-panel {
+  position: absolute;
+  z-index: 713;
+  left: 16px;
+  bottom: 122px;
+  width: min(370px, calc(100% - 32px));
+  max-height: min(55vh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(81, 99, 108, .5);
+  border-radius: 13px;
+  background: rgba(12, 17, 22, .97);
+  box-shadow: 0 8px 28px rgba(0,0,0,.35);
+  color: #d7e0e3;
+  backdrop-filter: blur(12px);
+}
+.osm-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  border-bottom: 1px solid #28363d;
+}
+.osm-results-head span { color: #93a4aa; font-size: 8px; font-weight: 950; letter-spacing: .09em; }
+.osm-results-head button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: #182229;
+  color: #b7c4c9;
+  cursor: pointer;
+}
+.osm-results-note {
+  padding: 8px 11px;
+  border-bottom: 1px solid #253239;
+  color: #73858c;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.osm-results-list { overflow-y: auto; overscroll-behavior: contain; }
+.osm-result-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 0;
+  border-bottom: 1px solid #202d33;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.osm-result-row:hover { background: #131e24; }
+.osm-result-row .result-glyph {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #4f626b;
+  border-radius: 50%;
+  color: #bedb86;
+  font-size: 8px;
+  font-weight: 950;
+}
+.osm-result-row b,
+.osm-result-row small { display: block; }
+.osm-result-row b { overflow: hidden; color: #edf2f4; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.osm-result-row small { margin-top: 3px; color: #7f9198; font-size: 7px; }
+.osm-result-row i {
+  color: #7d8f96;
+  font-size: 7px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.osm-results-cap {
+  padding: 8px 11px;
+  color: #8c9ba1;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.record-link-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 10px 0 12px;
+}
+.record-link-actions button {
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #485c65;
+  border-radius: 8px;
+  background: #152027;
+  color: #c7d4d8;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.record-link-actions button.primary { border-color: #6e9436; background: #26361b; color: #dff5b9; }
+.record-link-pending {
+  position: absolute;
+  z-index: 713;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  padding: 8px 11px;
+  border: 1px solid #5f6f77;
+  border-radius: 999px;
+  background: rgba(12,17,22,.94);
+  color: #b8c6cb;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.teach-scan.nudge {
+  animation: scan-nudge 1s ease-in-out 4;
+  box-shadow: 0 0 0 0 rgba(184,231,106,.48), 0 3px 14px rgba(0,0,0,.28);
+}
+@keyframes scan-nudge {
+  50% { box-shadow: 0 0 0 8px rgba(184,231,106,0), 0 3px 14px rgba(0,0,0,.28); transform: translateY(-1px); }
+}
+
+.teach-coverage-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-top: 1px solid #26343b;
+  background: #0d1218;
+}
+.teach-coverage-footer button {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: #172129;
+  color: #a9bcc4;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.teach-coverage-footer span { color: #65767d; font-size: 6px; letter-spacing: .07em; text-align: right; }
+
+/* Do not let the old footer selector style the coverage footer like the application footer. */
+.teach-coverage > footer { display: none !important; }
+
+@media (max-width: 900px) {
+  .map-mode-switch { top: 68px; left: 10px; }
+  .map-filter-chips { top: 108px !important; }
+  .sidebar { top: 152px !important; }
+}
+
+@media (max-width: 620px) {
+  .map-mode-switch { top: 64px; left: 10px; }
+  .map-mode-switch button { min-height: 30px; padding: 0 9px; font-size: 7px; }
+  .map-filter-chips { top: 102px !important; }
+  .teach-coverage { top: 144px !important; }
+  .sidebar { top: 142px !important; }
+  .osm-results-toggle { left: 10px; bottom: 104px; }
+  .osm-results-panel { left: 10px; bottom: 150px; width: calc(100% - 20px); max-height: 48vh; }
+  .record-link-pending { bottom: 100px; max-width: calc(100% - 20px); text-align: center; }
+  .record-link-actions { grid-template-columns: 1fr; }
+  .teach-coverage-footer { align-items: flex-start; flex-direction: column; }
+  .teach-coverage-footer span { text-align: left; }
+}
