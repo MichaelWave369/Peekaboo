@@ -1,0 +1,324 @@
+/* Peekaboo v2.1 — Teach the Map. First-run clarity, primary scan, coverage and ledger visibility. */
+
+#peekaboo-teach-map-host {
+  position: absolute;
+  inset: 0;
+  z-index: 735;
+  pointer-events: none;
+}
+#peekaboo-teach-map-host > * { pointer-events: auto; }
+
+.teach-primary-actions {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  display: flex;
+  gap: 7px;
+  transform: translateX(-50%);
+}
+.teach-scan,
+.teach-locate {
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 3px 14px rgba(0,0,0,.28);
+  cursor: pointer;
+}
+.teach-scan {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  background: #172119;
+  color: #eaffd2;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .09em;
+}
+.teach-scan:hover:not(:disabled) { background: #223026; }
+.teach-scan:disabled { opacity: .72; cursor: default; }
+.teach-scan-eye {
+  width: 14px;
+  height: 9px;
+  position: relative;
+  display: inline-block;
+  border: 1.5px solid #b8e76a;
+  border-radius: 80% 20% 80% 20%;
+  transform: rotate(45deg);
+}
+.teach-scan-eye::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: #b8e76a;
+}
+.teach-scan.busy .teach-scan-eye { animation: teach-pulse 1s ease-in-out infinite; }
+@keyframes teach-pulse { 50% { opacity: .35; transform: rotate(45deg) scale(.82); } }
+.teach-locate {
+  width: 42px;
+  padding: 0;
+  background: #fff;
+  color: #334047;
+  font-size: 21px;
+  font-weight: 700;
+}
+.teach-locate:hover { background: #f2f6f0; color: #527c19; }
+
+.teach-coverage {
+  position: absolute;
+  top: 58px;
+  right: 16px;
+  width: min(310px, calc(100% - 32px));
+  overflow: hidden;
+  border: 1px solid rgba(74, 91, 101, .45);
+  border-radius: 12px;
+  background: rgba(13, 18, 24, .95);
+  box-shadow: 0 4px 18px rgba(0,0,0,.28);
+  color: #d9e2e6;
+  backdrop-filter: blur(12px);
+}
+.teach-coverage-toggle {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: #b8c7cd;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+.teach-coverage-toggle strong {
+  min-width: 22px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #28343b;
+  color: #dff4b7;
+  text-align: center;
+}
+.teach-coverage-list { display: grid; gap: 1px; }
+.teach-source-hint {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-top: 1px solid #26343b;
+  background: rgba(17, 24, 30, .9);
+}
+.teach-source-hint > span { min-width: 0; }
+.teach-source-hint b,
+.teach-source-hint small { display: block; }
+.teach-source-hint b { color: #eef3f5; font-size: 9px; }
+.teach-source-hint small {
+  display: none;
+  margin-top: 3px;
+  color: #84949b;
+  font-size: 7px;
+  line-height: 1.45;
+}
+.teach-coverage.expanded .teach-source-hint small { display: block; }
+.teach-source-hint i {
+  padding: 3px 6px;
+  border: 1px solid #43545d;
+  border-radius: 999px;
+  color: #aebdc3;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.teach-source-hint.status-in-app i { border-color: #507b45; color: #a9d895; }
+.teach-source-hint.status-key-required i { border-color: #7a6337; color: #e9cc88; }
+.teach-source-hint.status-official-viewer i { border-color: #466c86; color: #9dcae5; }
+.teach-source-hint.status-scan-on-demand i { border-color: #617446; color: #c9e29b; }
+.teach-source-hint[class*='status-'][class*='-in-view'] i { border-color: #5f5989; color: #c4bff1; }
+.teach-more {
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-top: 1px solid #26343b;
+  background: #11181e;
+  color: #98a9b0;
+  font-size: 7px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.teach-coverage footer {
+  min-height: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-top: 1px solid #26343b;
+  background: #0d1218;
+  color: #65767d;
+  font-size: 6px;
+  letter-spacing: .07em;
+}
+
+.teach-ledger-pulse {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid rgba(108, 123, 131, .45);
+  border-radius: 999px;
+  background: rgba(12, 17, 22, .94);
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  color: #c6d0d5;
+  font-size: 7px;
+  cursor: pointer;
+}
+.teach-ledger-pulse span { color: #8d9aa0; font-weight: 900; letter-spacing: .08em; }
+.teach-ledger-pulse b:nth-of-type(1) { color: #a8dd91; }
+.teach-ledger-pulse b:nth-of-type(2) { color: #e2a1a6; }
+.teach-ledger-pulse b:nth-of-type(3) { color: #e0c884; }
+
+.teach-onboarding-backdrop {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 7, 10, .68);
+  backdrop-filter: blur(7px);
+}
+.teach-onboarding-card {
+  width: min(620px, 100%);
+  padding: 26px;
+  border: 1px solid #40515a;
+  border-radius: 18px;
+  background: #0f151b;
+  box-shadow: 0 20px 70px rgba(0,0,0,.5);
+  color: #c8d4d9;
+}
+.teach-onboarding-mark {
+  width: 42px;
+  height: 28px;
+  position: relative;
+  margin-bottom: 14px;
+  border: 2px solid #a7d85c;
+  border-radius: 70% 20% 70% 20%;
+  transform: rotate(45deg);
+}
+.teach-onboarding-mark span {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  inset: 0;
+  margin: auto;
+  border-radius: 50%;
+  background: #a7d85c;
+}
+.teach-onboarding-card .eyebrow { color: #91aa69; }
+.teach-onboarding-card h2 {
+  max-width: 560px;
+  margin: 7px 0 10px;
+  color: #f2f6f7;
+  font-size: clamp(21px, 4vw, 32px);
+  line-height: 1.08;
+  letter-spacing: -.025em;
+}
+.teach-onboarding-card > p {
+  max-width: 560px;
+  margin: 0;
+  color: #9fadb3;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.teach-onboarding-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+}
+.teach-onboarding-grid > div {
+  padding: 12px;
+  border: 1px solid #29373e;
+  border-radius: 10px;
+  background: #121b21;
+}
+.teach-onboarding-grid strong,
+.teach-onboarding-grid span { display: block; }
+.teach-onboarding-grid strong { margin-bottom: 6px; color: #c9e497; font-size: 8px; letter-spacing: .09em; }
+.teach-onboarding-grid span { color: #899aa2; font-size: 9px; line-height: 1.5; }
+.teach-onboarding-grid b { color: #dce6e9; }
+.teach-onboarding-actions { display: flex; gap: 8px; margin-top: 14px; }
+.teach-onboarding-actions button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #46565e;
+  border-radius: 9px;
+  background: #182128;
+  color: #cbd6da;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.teach-onboarding-actions button.primary {
+  border-color: #7ba93c;
+  background: #6f982f;
+  color: #fff;
+}
+.teach-onboarding-card > small { display: block; margin-top: 12px; color: #697980; font-size: 7px; line-height: 1.5; }
+.teach-location-status {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #3b4f59;
+  border-radius: 8px;
+  background: #101920;
+  color: #a9bbc2;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+/* The old map HUD remains source truth. Teach controls sit around it rather than covering it. */
+.map-hud { top: 16px; }
+
+@media (max-width: 900px) {
+  .teach-primary-actions { top: 116px; }
+  .teach-coverage { top: 158px; right: 10px; width: min(290px, calc(100% - 20px)); }
+  .teach-ledger-pulse { top: 108px; right: 10px; }
+}
+
+@media (max-width: 620px) {
+  .teach-primary-actions {
+    top: auto;
+    left: 50%;
+    bottom: 52px;
+    width: calc(100% - 88px);
+  }
+  .teach-scan { flex: 1; justify-content: center; }
+  .teach-locate { flex: 0 0 42px; }
+  .teach-coverage {
+    top: 116px;
+    right: 10px;
+    width: calc(100% - 20px);
+  }
+  .teach-coverage:not(.expanded) .teach-coverage-list { display: none; }
+  .teach-coverage:not(.expanded) .teach-more,
+  .teach-coverage:not(.expanded) footer { display: none; }
+  .teach-ledger-pulse {
+    top: 74px;
+    left: 10px;
+    right: auto;
+    max-width: calc(100% - 20px);
+  }
+  .teach-ledger-pulse span { display: none; }
+  .teach-onboarding-card { padding: 20px; border-radius: 14px; }
+  .teach-onboarding-grid { grid-template-columns: 1fr; }
+  .teach-onboarding-actions { flex-direction: column; }
+  .teach-onboarding-actions button { width: 100%; }
+}
