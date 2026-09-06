@@ -4,241 +4,218 @@
 
 > **See what sees you.**
 
-Peekaboo is a public-data map for exploring surveillance infrastructure voluntarily documented in [OpenStreetMap](https://www.openstreetmap.org/). It queries public Overpass infrastructure for surveillance-related OSM objects in the current map view, normalizes the tags, and presents them in a modern browser interface.
+Peekaboo is a client-side public-data map for exploring mapped surveillance infrastructure and intentionally published public camera feeds while preserving source provenance and uncertainty.
 
 **Live site:** https://michaelwave369.github.io/Peekaboo/
+
+## Current release: v1.4.0
+
+Peekaboo currently has three distinct evidence lanes:
+
+1. **OpenStreetMap / Overpass surveillance records**
+   - Cameras, ALPR, Flock Safety claims, guards/watched areas, gunshot detectors and other mapped surveillance objects.
+   - Public-space and park/recreation context when supported by explicit OSM tags.
+   - OSM change ledger, snapshots, record-age diagnostics, metadata-detail diagnostics and audit exports.
+
+2. **OSM-published public webcam links**
+   - A surveillance record becomes viewable only when OSM explicitly carries a valid `contact:webcam=*` URL.
+   - Peekaboo distinguishes an OSM-published URL from verified reachability.
+   - Known stale provider routes can use a current official provider directory while retaining the original OSM URL as provenance.
+
+3. **Official public-camera sources**
+   - **USGS Volcano Hazards Program / Ashcam** current-image cameras.
+   - **Caltrans CCTV** traffic-camera snapshots and published video URLs for the current map viewport.
+   - Official-source records remain separate from OSM and do not enter the OSM change ledger.
 
 ## What Peekaboo is
 
 - A transparency and civic-tech visualization tool.
-- A client-side OpenStreetMap / Overpass explorer.
-- A way to inspect public metadata such as surveillance type, observed zone, operator, manufacturer, model, camera type, direction and OSM source provenance when those fields exist.
-- A deliberately honest view of **mapped data**, not a claim about real-world surveillance completeness.
+- A map-first browser interface for public surveillance metadata.
+- A provenance-aware viewer for camera media intentionally published by public data sources.
+- A way to compare OSM records through time without confusing database change with physical-device change.
+- A client-side application with no device scanner and no camera-discovery backend.
 
 ## What Peekaboo is not
 
-Peekaboo does **not** discover cameras, probe devices, access live feeds, identify surveillance blind spots, or claim that an unmapped area has no surveillance. It only visualizes data already published in OpenStreetMap.
+Peekaboo does **not**:
 
-## v0.6 features
+- scan networks or discover cameras;
+- probe camera IPs, ports, credentials or alternate stream paths;
+- bypass authentication;
+- guess hidden or undocumented feed URLs;
+- convert an ordinary surveillance marker into a viewable camera;
+- identify surveillance blind spots or provide camera-avoidance routing;
+- claim that an unmapped area has no surveillance;
+- treat a stale/deleted OSM record as proof that physical hardware was removed.
 
-### Viewport-bound OSM change ledger
+A feed is shown only when an upstream public source explicitly publishes the media or camera link.
 
-Peekaboo can now save a local baseline for a scanned viewport and compare later scans of that **same query area** against it.
+## Map-first interface
 
-- `NEWLY MAPPED` means an OSM record ID is present now but was not present in the saved baseline.
-- `REMOVED FROM OSM` means a baseline OSM record ID is no longer present in the current result set.
-- `METADATA CHANGED` means the same OSM object has a different semantic comparison fingerprint, such as operator, model, vendor evidence, classification, direction, geometry or raw tag changes.
-- `UNCHANGED` means the normalized OSM record payload matches the saved baseline.
-- Peekaboo refuses to infer change when baseline and current viewport fingerprints differ.
-- Removed records are counted and exported, but are not rendered as ghost devices on the live map.
-- Added/changed current records receive subtle map-ring indicators and per-object change receipts.
+Peekaboo uses familiar consumer-map interaction patterns without copying third-party branding:
 
-The change ledger compares **public OSM records**, not physical hardware. An added record does not independently prove installation; a removed record does not independently prove removal; and metadata edits do not establish device activity or status.
+- floating address/place search;
+- full-map workspace;
+- quick filter chips;
+- collapsible research panel;
+- marker details drawer / mobile bottom sheet;
+- independently styled OSM, USGS and Caltrans camera markers.
 
-### Portable, tamper-checked snapshots
+Address search only moves the map. It does not silently trigger an OSM surveillance scan.
 
-- Baselines are stored locally in the browser and are not uploaded by Peekaboo.
-- Snapshots can be exported as JSON and imported later for the same viewport.
-- Snapshot records use deterministic semantic fingerprints plus a dataset fingerprint.
-- Imported snapshots are validated for generator, schema, record count, duplicate IDs, coordinates and fingerprint integrity before use.
-- Snapshot imports are size-bounded in the browser.
-- The comparison fingerprint is deterministic but is intended for reproducibility/tamper detection, not cryptographic authentication.
-- Source revision metadata such as OSM version/timestamp alone does not fabricate a semantic change when the mapped semantic payload is unchanged.
-- Change reports can be exported as JSON with baseline/current fingerprints, query metadata and explicit uncertainty language.
+## OpenStreetMap surveillance lane
 
-### Dense-map rendering
+### Viewport-bound querying
 
-- Deterministic client-side clustering activates automatically for dense result sets at lower zoom levels.
-- Clusters are only a rendering optimization: record totals, filters and exports continue to operate on the underlying OSM records.
-- Clicking a cluster zooms toward the grouped records; high zoom restores individual markers.
-- No additional map service, analytics service or clustering dependency is required.
+OSM data is loaded only when the user explicitly scans the current viewport.
 
-### Metadata detail diagnostics
+- Result sets are bound to the exact query viewport.
+- Moving the map produces a visible **VIEW MOVED • RESCAN** state.
+- Previous known-good data is preserved when a refresh fails.
+- A hard query-area limit prevents accidental huge Overpass requests.
 
-Peekaboo computes a **metadata detail score** for each loaded record based on descriptive fields such as source identity, classification, timestamp, zone, operator, camera type, direction, manufacturer and model.
+### Adaptive Overpass recovery
 
-- The score measures metadata completeness only.
-- It is explicitly labeled **NOT TRUTH SCORE** in the interface.
-- Missing or generic fields are shown in the object inspector.
-- Dataset-level average detail and high/medium/low detail counts can be included in the exported audit manifest.
+Peekaboo first attempts the normal viewport query. Congestion-style failures can trigger deterministic 2×2 geographic sharding.
 
-### Co-location diagnostics
+- All shards must succeed.
+- Partial shard results are rejected.
+- Boundary duplicates are canonicalized and deduplicated.
+- If two shards return different payloads for the same OSM object, the acquisition fails closed with a consistency-conflict receipt.
+- HTTP 429 / explicit `Retry-After` conditions do not trigger sharding.
+- Endpoint-health cooldowns and a per-scan request budget reduce load on public Overpass infrastructure.
 
-- Peekaboo detects mapped-record pairs within roughly 12 meters using a bounded spatial index.
-- These are labeled **co-located candidates**, never automatically deduplicated.
-- Nearby records may represent duplicate mapping, multiple real devices on one structure, or legitimate overlapping records.
-- The selected-object inspector explains the ambiguity instead of silently merging evidence.
+### Flock Safety layer
 
-### Failure recovery
+Flock Safety ALPR classification is based on public OSM claims such as manufacturer/model metadata. Vendor identity is never presented as independent physical verification.
 
-- Failed queries preserve the previously loaded result set instead of replacing it with a misleading empty map.
-- Query errors expose an explicit retry control.
-- Browser online/offline state is surfaced in the interface.
-- Superseded requests are aborted, including cleanup when the app unmounts.
-- A top-level React error boundary fails into a recovery screen rather than leaving a partially rendered map that appears trustworthy.
-- Baseline storage/import errors are contained and surfaced instead of silently corrupting comparison state.
+Flock Raven gunshot detectors remain gunshot detectors rather than being collapsed into the ALPR category.
 
-### Search and auditability
+### OSM context layers
 
-- Search within currently loaded public OSM records by name, operator, manufacturer, model, zone, category, object ID and raw tag text.
-- Search state is preserved in copyable Peekaboo view links alongside map center, zoom and visible layers.
-- Selected objects automatically close if filtering/search removes them from the visible result set.
+- **Public space** requires explicit public/town/street surveillance context.
+- **Park / recreation** requires explicit park/recreation context on the surveillance record.
+- Peekaboo does not infer a park camera merely because a marker happens to be geographically near a park.
 
-### OSM record age
+### OSM public webcams
 
-Peekaboo separates **record age** from **device status**.
+A record enters the **OSM LIVE** layer only when `contact:webcam=*` supplies a safe public HTTP(S) URL.
 
-- `< 1 year`, `1–3 years`, `3+ years`, and `unknown/no date` buckets summarize the last OSM edit timestamp.
-- Each selected object shows its OSM record-age class.
-- An old OSM record is never presented as proof that a physical device has disappeared.
-- A recent edit is never presented as independent verification that a physical device is currently active.
+- Browser-local/private addresses and unsafe schemes are rejected.
+- Direct HTTPS image/video media may be displayed after explicit user action.
+- Ordinary webpages are opened externally instead of being silently embedded.
+- A published URL is labeled as a published mapping claim, not proof of current reachability.
+- Provider fallbacks never erase the original OSM URL.
 
-### Flock Safety ALPR layer
+## Official-source lane
 
-Peekaboo treats mapped Flock Safety ALPR devices as a first-class category while preserving the provenance of the vendor claim.
+Official sources are isolated from the OSM data model. A failure in an official feed does not alter OSM results, OSM exports or the OSM change ledger.
 
-- Strong Flock matches use `manufacturer=Flock Safety` or `manufacturer:wikidata=Q108485435`.
-- Older or alternate `brand=Flock Safety` / `operator=Flock Safety` records can still be recognized, but are labeled as legacy/alternate evidence in the inspector.
-- Falcon model text can support the ALPR classification when vendor evidence is present.
-- Flock Raven gunshot detectors remain in the gunshot-detector category instead of being mislabeled as ALPR cameras.
-- Manufacturer, model, evidence strength and the exact source tag are displayed in the detail inspector.
-- Vendor identity is always presented as an **OpenStreetMap claim**, not independent physical-device verification.
+### USGS Ashcam
 
-### Reliability and provenance
+Peekaboo can load public current-image camera records from the USGS Volcano Hazards Program Ashcam service.
 
-- Result sets are bound to the viewport that produced them.
-- Visible **VIEW MOVED • RESCAN** state prevents old results from being mistaken for the current map view.
-- Mapping-signal statistics use the loaded query area rather than whatever viewport happens to be on screen later.
-- Overpass endpoint failover between independent public instances.
-- Small abortable delay before fallback requests reduces immediate hammering when an endpoint fails.
-- Per-request timeout handling and cancellation of superseded queries.
-- Five-minute session cache to reduce repeat load on public Overpass infrastructure.
-- Explicit force-refresh control for a fresh network query.
-- Source endpoint, query path, query duration and prior failover count shown in the interface.
-- Overpass `remark` responses are treated as failures rather than silently accepted as empty/partial data.
-- Browser rendering is bounded for unexpectedly large result sets.
+- zero-secret browser adapter;
+- explicit source receipt;
+- coordinates and camera code;
+- current-image URL;
+- reported image timestamp;
+- image-freshness classes (`<1 hour`, `<24 hours`, `<7 days`, `7+ days`, unknown);
+- optional original-provider link;
+- 10-minute session cache;
+- 12-second source timeout;
+- bounded marker rendering for broad views.
 
-### Reproducibility and data tools
+Ashcam images are described as current/near-real-time snapshots, not automatically as continuous live video.
 
-- URL hash permalinks preserve map center, zoom, visible layers and loaded-record search text.
-- One-click copyable view links.
-- GeoJSON export of the currently visible loaded records.
-- CSV export with spreadsheet-formula injection neutralization for untrusted public text fields.
-- JSON manifest export containing schema version, source endpoint, query metadata, category counts, OSM record-age summary, metadata-detail diagnostics, co-location diagnostics and change-ledger summary when a compatible baseline exists.
-- Portable JSON snapshot export/import for same-viewport comparisons.
-- JSON change-report export with added, removed and changed OSM records.
-- GeoJSON includes manufacturer/model/vendor-evidence fields when available.
-- Export metadata explicitly states that vendor identity is an OSM claim and missing OSM records do not imply absence of surveillance.
+### Caltrans CCTV
 
-### Guardrails
+Peekaboo v1.4 adds viewport-bound queries against the official Caltrans CCTV ArcGIS FeatureServer.
 
-- Hard viewport-size cap to avoid abusive Overpass queries.
-- No backend, database, accounts or API keys.
-- No live-feed access or device discovery.
-- No routing around surveillance or blind-spot inference.
-- No automatic deletion or merging of suspected duplicate records.
-- No cross-viewport change inference.
-- Responsive desktop/mobile UI.
+The adapter can use source-published fields including:
 
-## Run locally
+- `locationName` / nearby place;
+- route, direction, county and district;
+- `inService` status;
+- `currentImageURL`;
+- `streamingVideoURL`;
+- image refresh metadata;
+- source record timestamp and coordinates.
+
+Robustness rules:
+
+- only the current map viewport is queried;
+- ArcGIS transfer-limit truncation is rejected instead of displayed as a complete result;
+- moved-map results become stale until refreshed;
+- camera IDs are deduplicated;
+- unsafe/private media URLs are rejected;
+- HTTP media remains external-only in the HTTPS app;
+- media never autoplays or autoloads;
+- HLS/video is only offered from the explicit Caltrans URL and only inline when the browser reports compatible native playback;
+- dense views cap marker rendering while preserving the queried source count and telling the user to zoom in.
+
+## OSM change ledger
+
+Peekaboo can save a local baseline for a scanned OSM viewport and compare a later scan of the **same** area.
+
+- `NEWLY MAPPED`: an OSM record ID appears now but not in the baseline.
+- `REMOVED FROM OSM`: a baseline ID is no longer present in the current OSM result.
+- `METADATA CHANGED`: the same OSM object has a different semantic fingerprint.
+- `UNCHANGED`: the normalized semantic payload matches.
+
+These labels describe OSM records only. They do not independently prove physical installation, removal, presence or activity.
+
+Baselines remain local to the browser unless the user explicitly exports them.
+
+## Diagnostics and auditability
+
+Peekaboo includes:
+
+- OSM record-age buckets;
+- metadata-detail score labeled **NOT TRUTH SCORE**;
+- co-location diagnostics that never automatically deduplicate nearby records;
+- deterministic dense-map clustering;
+- source endpoint / query-path / duration information;
+- GeoJSON, CSV and JSON audit exports;
+- viewport/source fingerprints;
+- change-report exports;
+- explicit failure states instead of silent empty maps.
+
+## Public API discipline
+
+Peekaboo treats public infrastructure as shared infrastructure.
+
+- Overpass endpoint failover with cooldowns and request budgets.
+- `Retry-After` awareness.
+- bounded adaptive queries.
+- user-triggered Nominatim place search without autocomplete.
+- session caching to avoid unnecessary repeat requests.
+- source-specific timeouts and failure isolation.
+
+## Privacy and security boundary
+
+Peekaboo has no functionality for camera exploitation or private-feed discovery.
+
+Public media URLs are accepted only from explicit upstream public records. URL handling rejects unsupported schemes, credentials, localhost and common private/link-local address ranges before media is offered.
+
+## Development
 
 ```bash
 npm install
+npm test
 npm run dev
 ```
 
-Tests and production build:
+Production build:
 
 ```bash
-npm test
 npm run build
-npm run preview
 ```
 
-## Data flow
+The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization and Caltrans CCTV normalization/query semantics.
 
-```text
-OpenStreetMap contributors
-        │
-        ▼
- public Overpass endpoints
-        │
-        ├── timeout / cancellation
-        ├── endpoint failover + light backoff
-        └── short session cache
-        │
-        ▼
-  tag normalization
-        │
-        ├── Flock Safety ALPR
-        ├── camera
-        ├── generic ALPR / ANPR
-        ├── guard
-        ├── gunshot detector
-        └── other surveillance
-        │
-        ├── vendor-claim provenance
-        ├── OSM record-age classification
-        ├── metadata-detail diagnostics
-        ├── bounded co-location diagnostics
-        ├── loaded-record search
-        ├── viewport-bound change snapshots
-        └── GeoJSON / CSV / manifest / change exports
-        │
-        ▼
- deterministic display clustering
-        │
-        ▼
- React + Leaflet interface
-```
+## Data-source responsibility
 
-The Overpass query includes objects with either `man_made=surveillance` or a `surveillance:type=*` tag and requests metadata plus centers for mapped ways/relations.
+Peekaboo does not control upstream OpenStreetMap, USGS, Caltrans or provider data. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
 
-## Change-ledger policy
-
-Peekaboo deliberately treats source change and physical-world change as different claims.
-
-A baseline is tied to the exact stored viewport fingerprint. A later scan is comparable only when its viewport fingerprint matches. The comparison key is the OSM object ID; semantic fingerprints then detect normalized/tag/geometry changes for records that persist across snapshots.
-
-The following inferences are intentionally **not** made:
-
-- `NEW OSM RECORD` ≠ independently verified new physical camera.
-- `REMOVED FROM OSM` ≠ independently verified removed physical camera.
-- `METADATA CHANGED` ≠ independently verified hardware modification.
-- `UNCHANGED` ≠ proof the physical device remains present or active.
-
-This keeps the ledger useful for public-data research without laundering map edits into claims about the real world.
-
-## Flock identification policy
-
-Peekaboo deliberately separates three claims that are often blurred together:
-
-1. A mapped surveillance object exists in OSM.
-2. Its tags indicate ALPR/ANPR behavior or a Falcon model.
-3. Its tags attribute the device to Flock Safety.
-
-Only records that satisfy both the Flock-vendor claim and the ALPR/Falcon condition enter the dedicated **Flock Safety ALPR** layer. A Flock manufacturer tag by itself is not enough to label an arbitrary surveillance device as an ALPR.
-
-OSM data can be incomplete, outdated, disputed or incorrectly tagged. Peekaboo therefore exposes the original object, changeset, raw tags, record age, descriptive-metadata gaps and change-ledger status so users can inspect the evidence rather than treating the rendered marker as an independently verified fact.
-
-## Mapping signal and diagnostics
-
-The **Mapping Signal** panel intentionally does not call itself "coverage confidence." An empty OpenStreetMap result cannot establish that a real location has no cameras.
-
-- **Mapped density**: loaded OSM surveillance objects per approximate square kilometer of the viewport that produced the result set.
-- **Tag detail**: how often loaded objects contain descriptive fields such as zone, operator, camera type and direction.
-- **Metadata detail score**: descriptive-field completeness, not claim truthfulness.
-- **Co-located candidates**: nearby mapped records, not automatically duplicate devices.
-- **Change ledger**: differences between two same-viewport OSM snapshots, not independently verified physical changes.
-
-When the map moves after a scan, Peekaboo keeps the previous data visible but marks it stale relative to the current viewport until the user rescans.
-
-## Responsible use
-
-Peekaboo is intended for public-interest research, mapping quality work, journalism, education and civic transparency. Please respect OpenStreetMap's contributor community and public Overpass infrastructure. Do not use this project to target people or property, evade lawful security measures, or overload public API services.
-
-## Attribution
-
-Map and surveillance metadata © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), available under the [ODbL](https://opendatacommons.org/licenses/odbl/).
-
-Peekaboo source code is released under the MIT License.
+The interface is designed to expose those distinctions instead of hiding them.
