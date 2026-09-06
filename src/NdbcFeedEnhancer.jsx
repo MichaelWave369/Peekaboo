@@ -209,16 +209,24 @@ export default function NdbcFeedEnhancer() {
     return () => observer.disconnect()
   }, [selected])
 
+  const toggle = () => {
+    setEnabled((value) => {
+      const next = !value
+      if (!next) setSelected(null)
+      return next
+    })
+  }
+
   return (
     <>
       {chipHost && createPortal(
-        <button type="button" className={`ndbc-feed-chip ${enabled ? 'active' : ''}`} aria-pressed={enabled} onClick={() => setEnabled((value) => !value)} title="NOAA National Data Buoy Center BuoyCAM current-image stations">
+        <button type="button" className={`ndbc-feed-chip ${enabled ? 'active' : ''}`} aria-pressed={enabled} onClick={toggle} title="NOAA National Data Buoy Center BuoyCAM current-image stations">
           NOAA BUOYS <strong>{enabled ? visible.length : STATIONS.length}</strong>
         </button>,
         chipHost,
       )}
       {panelHost && enabled && createPortal(<NdbcPanel visible={visible} onSelect={setSelected} />, panelHost)}
-      {drawerHost && selected && createPortal(<NdbcDrawer station={selected} onClose={() => setSelected(null)} />, drawerHost)}
+      {drawerHost && enabled && selected && createPortal(<NdbcDrawer station={selected} onClose={() => setSelected(null)} />, drawerHost)}
     </>
   )
 }
