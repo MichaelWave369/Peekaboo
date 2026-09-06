@@ -1,0 +1,183 @@
+/* Peekaboo v1.5 Iowa DOT official traffic-camera layer. */
+
+.iowa-chip-host { display: contents; }
+.map-filter-chips .iowa-chip.active {
+  border-color: #6359c9;
+  background: #f1efff;
+  color: #4d43aa;
+}
+.map-filter-chips .iowa-chip strong { color: #655ac2; }
+.map-filter-chips .iowa-chip.stale {
+  border-color: #857a4a;
+  background: #fff9e8;
+  color: #6c5d2b;
+}
+.map-filter-chips .iowa-chip.stale strong {
+  color: #8d751f;
+  font-size: 7px;
+}
+
+.iowa-source-panel { border-color: #453f6f; }
+.iowa-source-panel .panel-heading span:last-child { color: #aaa2ff; }
+.iowa-source-grid strong { color: #d4d0ff; }
+.iowa-stale-note {
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid #75682f;
+  border-radius: 8px;
+  background: #211d0f;
+  color: #bdb38a;
+  font-size: 8px;
+  line-height: 1.45;
+}
+.iowa-stale-note strong,
+.iowa-stale-note span { display: block; }
+.iowa-stale-note strong { color: #ead377; letter-spacing: .08em; }
+.iowa-stale-note span { margin-top: 4px; }
+
+.iowa-feed-marker {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #9b92ff;
+  border-radius: 50%;
+  background: #352f78;
+  color: #f0eeff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.42);
+  font-size: 10px;
+  font-weight: 950;
+}
+.iowa-feed-marker.video {
+  box-shadow: 0 0 0 3px rgba(155,146,255,.22), 0 2px 8px rgba(0,0,0,.42);
+}
+.iowa-feed-marker.snapshot { border-style: dashed; }
+
+#peekaboo-iowa-drawer-host { position: relative; z-index: 916; }
+.iowa-feed-drawer { z-index: 926; }
+.iowa-source-pill {
+  display: inline-flex;
+  margin: 7px 0 12px;
+  padding: 5px 8px;
+  border: 1px solid #655bb8;
+  border-radius: 999px;
+  background: #231f4f;
+  color: #c9c5ff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.iowa-source-pill.video {
+  border-color: #756ad2;
+  background: #2d275f;
+  color: #d8d5ff;
+}
+
+.iowa-source-note,
+.iowa-recording-note {
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px solid #4a4674;
+  border-radius: 8px;
+  background: #121225;
+  color: #a9a9bd;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.iowa-source-note strong,
+.iowa-source-note span,
+.iowa-source-note code,
+.iowa-recording-note strong,
+.iowa-recording-note span { display: block; }
+.iowa-source-note strong,
+.iowa-recording-note strong {
+  color: #aaa2ff;
+  font-size: 8px;
+  letter-spacing: .11em;
+}
+.iowa-source-note span,
+.iowa-recording-note span {
+  margin-top: 4px;
+  color: #ecebff;
+  font-weight: 800;
+}
+.iowa-source-note code {
+  margin-top: 6px;
+  padding: 5px 6px;
+  background: #090911;
+  color: #bebae8;
+  overflow-wrap: anywhere;
+}
+.iowa-source-note p,
+.iowa-recording-note p { margin: 7px 0 0; }
+
+.iowa-feed-load,
+.iowa-feed-open {
+  width: 100%;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 9px;
+  padding: 8px 10px;
+  border: 1px solid #7167cf;
+  border-radius: 8px;
+  background: #5a50bd;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.iowa-feed-load.image,
+.iowa-feed-open.image {
+  border-color: #586773;
+  background: #182229;
+  color: #d7e1e6;
+}
+.iowa-feed-open.video { background: #4d4597; }
+.iowa-feed-load:hover,
+.iowa-feed-open:hover { filter: brightness(1.07); }
+
+.iowa-feed-media {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.iowa-feed-media img,
+.iowa-feed-media video {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border: 1px solid #3a414c;
+  border-radius: 8px;
+  background: #05080a;
+}
+.iowa-feed-media button {
+  min-height: 36px;
+  border: 1px solid #4f5968;
+  border-radius: 7px;
+  background: #141b22;
+  color: #c0cbd2;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+.iowa-feed-media small {
+  color: #868b9e;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+@media (pointer: coarse) {
+  .iowa-feed-load,
+  .iowa-feed-open,
+  .iowa-feed-media button { min-height: 44px; }
+}
+
+@media (max-width: 560px) {
+  .iowa-feed-media img,
+  .iowa-feed-media video { max-height: 38vh; }
+}
