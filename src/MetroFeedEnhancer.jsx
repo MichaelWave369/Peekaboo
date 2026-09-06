@@ -17,7 +17,7 @@ const SOURCE_CONFIGS = [
     chip: 'DENVER / CDOT',
     short: 'CDOT',
     title: 'Colorado DOT / COtrip',
-    sourceDescription: 'Official Colorado transportation-camera source. The currently published machine-readable camera layer is hosted on a CDOT GIS endpoint.',
+    sourceDescription: 'Official Colorado transportation-camera data currently exposed through a CDOT-owned GIS test host. Peekaboo treats that machine-readable endpoint as less stable than the public COtrip viewer and keeps the viewer as the authoritative fallback.',
     markerLetter: 'D',
     markerClass: 'denver',
     fetcher: fetchCdotCameras,
@@ -26,10 +26,10 @@ const SOURCE_CONFIGS = [
   },
   {
     key: 'illinois',
-    chip: 'CHICAGO / IDOT',
-    short: 'IDOT',
-    title: 'Illinois traffic cameras',
-    sourceDescription: 'Official Illinois transportation-camera ArcGIS source used for public traffic-camera snapshots, including the Chicago region.',
+    chip: 'CHICAGO / IL',
+    short: 'IL CAMS',
+    title: 'Illinois public traffic cameras',
+    sourceDescription: 'Public Illinois traffic-camera ArcGIS source used for traveler-information snapshots, including the Chicago region. Peekaboo does not infer that every individual record is owned by the same agency.',
     markerLetter: 'C',
     markerClass: 'chicago',
     fetcher: fetchIllinoisCameras,
@@ -89,7 +89,6 @@ function MetroDrawer({ source, cam, onClose }) {
   const imageInline = Boolean(cam.inlineEligible && imageUrl && cam.hasImage)
   const videoInline = Boolean(cam.inlineEligible && videoUrl && cam.hasVideo && (cam.mediaKind !== 'hls' || nativeHls))
   const currentImage = imageUrl ? addCacheBuster(imageUrl, token) : null
-
   const sourceStatus = cam.status?.label || (cam.tooOld === true ? 'SOURCE SAYS IMAGE IS OLD' : cam.tooOld === false ? 'SOURCE DOES NOT FLAG IMAGE AS OLD' : 'SOURCE STATUS UNKNOWN')
 
   return (
@@ -97,7 +96,7 @@ function MetroDrawer({ source, cam, onClose }) {
       <button className="close-button" onClick={onClose} aria-label={`Close ${source.title} camera details`}>×</button>
       <div className="eyebrow">OFFICIAL METRO SOURCE / {source.short}</div>
       <h2>{cam.name}</h2>
-      <div className={`metro-source-pill ${source.markerClass}`}>{cam.hasVideo ? 'PUBLISHED VIDEO' : 'PUBLIC SNAPSHOT'}</div>
+      <div className={`metro-source-pill ${source.markerClass}`}>{cam.hasVideo ? 'PUBLISHED VIDEO' : cam.hasImage ? 'PUBLIC SNAPSHOT' : 'PUBLIC CAMERA LINK'}</div>
 
       <div className="metro-source-note">
         <strong>SOURCE RECEIPT</strong>
@@ -114,22 +113,17 @@ function MetroDrawer({ source, cam, onClose }) {
       </div>
 
       {videoUrl && videoInline && !videoLoaded && (
-        <button className="metro-media-load video" type="button" onClick={() => { setVideoError(false); setVideoLoaded(true) }}>
-          LOAD PUBLISHED VIDEO
-        </button>
+        <button className="metro-media-load video" type="button" onClick={() => { setVideoError(false); setVideoLoaded(true) }}>LOAD PUBLISHED VIDEO</button>
       )}
-
       {videoUrl && !videoInline && (
         <a className="metro-media-open video" href={videoUrl} target="_blank" rel="noopener noreferrer">OPEN PUBLISHED VIDEO ↗</a>
       )}
-
       {videoLoaded && !videoError && videoInline && (
         <div className="metro-media-box">
           <video src={videoUrl} controls playsInline preload="metadata" onError={() => setVideoError(true)} />
           {cam.mediaKind === 'hls' && <small>Native HLS playback is browser-dependent and still depends on the source stream remaining available.</small>}
         </div>
       )}
-
       {videoError && (
         <div className="official-feed-error" role="alert">
           <strong>PUBLISHED VIDEO COULD NOT BE LOADED</strong>
@@ -138,22 +132,17 @@ function MetroDrawer({ source, cam, onClose }) {
       )}
 
       {imageUrl && imageInline && !imageLoaded && (
-        <button className="metro-media-load image" type="button" onClick={() => { setImageError(false); setImageLoaded(true) }}>
-          LOAD CURRENT SNAPSHOT
-        </button>
+        <button className="metro-media-load image" type="button" onClick={() => { setImageError(false); setImageLoaded(true) }}>LOAD CURRENT SNAPSHOT</button>
       )}
-
       {imageUrl && !imageInline && (
         <a className="metro-media-open image" href={imageUrl} target="_blank" rel="noopener noreferrer">OPEN PUBLISHED SNAPSHOT ↗</a>
       )}
-
       {imageLoaded && !imageError && imageInline && (
         <div className="metro-media-box">
           <img src={currentImage} alt={cam.name} onError={() => setImageError(true)} />
           <button type="button" onClick={() => { setImageError(false); setToken(Date.now()) }}>REFRESH SNAPSHOT</button>
         </div>
       )}
-
       {imageError && (
         <div className="official-feed-error" role="alert">
           <strong>PUBLISHED SNAPSHOT COULD NOT BE LOADED</strong>
@@ -176,7 +165,7 @@ function MetroDrawer({ source, cam, onClose }) {
       </div>
 
       <a className="osm-link official-feed-link" href={source.viewerUrl} target="_blank" rel="noopener noreferrer">{source.viewerLabel} ↗</a>
-      <p className="official-feed-disclaimer">Only explicit agency-published media links are offered. Peekaboo does not scan devices, guess stream paths, bypass authentication, or infer that a source-status field proves physical camera health.</p>
+      <p className="official-feed-disclaimer">Only explicit source-published media links are offered. Peekaboo does not scan devices, guess stream paths, bypass authentication, or infer that a source-status field proves physical camera health.</p>
     </aside>
   )
 }
@@ -190,9 +179,15 @@ function CoveragePanel({ states, onToggleSource, onRefreshSource }) {
       <div className="metro-source-controls">
         {SOURCE_CONFIGS.map((source) => {
           const state = states[source.key]
+          const count = state?.items?.length || 0
+          const status = state?.dirty
+            ? 'VIEW MOVED'
+            : state?.loading
+              ? 'LOADING…'
+              : `${count} IN QUERY${count > MAX_MARKERS ? ` • ${MAX_MARKERS} RENDERED` : ''}`
           return (
             <div className="metro-source-control" key={source.key}>
-              <div><strong>{source.chip}</strong><span>{state?.dirty ? 'VIEW MOVED' : state?.loading ? 'LOADING…' : `${state?.items?.length || 0} IN QUERY`}</span></div>
+              <div><strong>{source.chip}</strong><span>{status}</span></div>
               <button type="button" className={state?.enabled ? 'active' : ''} onClick={() => onToggleSource(source.key)}>{state?.dirty && state?.enabled ? 'REFRESH' : state?.enabled ? 'HIDE' : 'SHOW'}</button>
               <button type="button" onClick={() => onRefreshSource(source.key)} disabled={state?.loading}>↻</button>
             </div>
@@ -423,11 +418,7 @@ export default function MetroFeedEnhancer() {
   return (
     <>
       {chipHost && createPortal(
-        <>
-          {SOURCE_CONFIGS.map((source) => (
-            <SourceChip key={source.key} source={source} state={states[source.key]} onClick={() => toggleSource(source.key)} />
-          ))}
-        </>,
+        <>{SOURCE_CONFIGS.map((source) => <SourceChip key={source.key} source={source} state={states[source.key]} onClick={() => toggleSource(source.key)} />)}</>,
         chipHost,
       )}
 
@@ -443,10 +434,7 @@ export default function MetroFeedEnhancer() {
         panelHost,
       )}
 
-      {drawerHost && selected && selectedSource && createPortal(
-        <MetroDrawer source={selectedSource} cam={selected.cam} onClose={() => setSelected(null)} />,
-        drawerHost,
-      )}
+      {drawerHost && selected && selectedSource && createPortal(<MetroDrawer source={selectedSource} cam={selected.cam} onClose={() => setSelected(null)} />, drawerHost)}
     </>
   )
 }
