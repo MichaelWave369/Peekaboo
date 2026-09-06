@@ -8,7 +8,7 @@ Peekaboo is a client-side public-data map for exploring mapped surveillance infr
 
 **Live site:** https://michaelwave369.github.io/Peekaboo/
 
-## Current release: v1.4.0
+## Current release: v1.5.0
 
 Peekaboo currently has three distinct evidence lanes:
 
@@ -25,6 +25,7 @@ Peekaboo currently has three distinct evidence lanes:
 3. **Official public-camera sources**
    - **USGS Volcano Hazards Program / Ashcam** current-image cameras.
    - **Caltrans CCTV** traffic-camera snapshots and published video URLs for the current map viewport.
+   - **Iowa DOT / Iowa 511** public traffic-camera images and video URLs from the state-published credential-free camera FeatureServer.
    - Official-source records remain separate from OSM and do not enter the OSM change ledger.
 
 ## What Peekaboo is
@@ -59,9 +60,9 @@ Peekaboo uses familiar consumer-map interaction patterns without copying third-p
 - quick filter chips;
 - collapsible research panel;
 - marker details drawer / mobile bottom sheet;
-- independently styled OSM, USGS and Caltrans camera markers.
+- independently styled OSM, USGS, Caltrans and Iowa DOT camera markers.
 
-Address search only moves the map. It does not silently trigger an OSM surveillance scan.
+Address search only moves the map. It does not silently trigger an OSM surveillance scan or an official-source request.
 
 ## OpenStreetMap surveillance lane
 
@@ -111,6 +112,23 @@ A record enters the **OSM LIVE** layer only when `contact:webcam=*` supplies a s
 
 Official sources are isolated from the OSM data model. A failure in an official feed does not alter OSM results, OSM exports or the OSM change ledger.
 
+### Shared ArcGIS source contract
+
+v1.5 introduces reusable helpers for official camera sources published through ArcGIS FeatureServer endpoints.
+
+The shared layer handles only source-agnostic mechanics:
+
+- validated geographic envelopes;
+- deterministic viewport fingerprints;
+- bounded record counts;
+- standard ArcGIS spatial-query parameters;
+- source-error propagation;
+- `exceededTransferLimit` detection;
+- coordinate normalization;
+- deterministic first-ID-wins deduplication.
+
+Camera-specific semantics stay in each agency adapter. For example, `inService` is Caltrans-specific while `RECORDED` is an Iowa DOT source field. Peekaboo does not collapse those into a generic truth flag.
+
 ### USGS Ashcam
 
 Peekaboo can load public current-image camera records from the USGS Volcano Hazards Program Ashcam service.
@@ -130,7 +148,7 @@ Ashcam images are described as current/near-real-time snapshots, not automatical
 
 ### Caltrans CCTV
 
-Peekaboo v1.4 adds viewport-bound queries against the official Caltrans CCTV ArcGIS FeatureServer.
+Peekaboo uses viewport-bound queries against the official Caltrans CCTV ArcGIS FeatureServer.
 
 The adapter can use source-published fields including:
 
@@ -153,6 +171,35 @@ Robustness rules:
 - media never autoplays or autoloads;
 - HLS/video is only offered from the explicit Caltrans URL and only inline when the browser reports compatible native playback;
 - dense views cap marker rendering while preserving the queried source count and telling the user to zoom in.
+
+### Iowa DOT / Iowa 511
+
+Peekaboo v1.5 adds viewport-bound queries against Iowa DOT's public Traffic Cameras FeatureServer. Iowa DOT documents this ESRI service as credential-free and as a source for current camera images/video.
+
+The adapter can use source-published fields including:
+
+- `ImageName` / description;
+- route, region and organization;
+- camera type and function;
+- common camera ID;
+- `ImageURL`;
+- `VideoURL`;
+- `RECORDED` source field;
+- coordinates.
+
+Robustness rules mirror the ArcGIS contract used for Caltrans:
+
+- current viewport only;
+- fail closed on `exceededTransferLimit`;
+- stale after the map moves until refreshed;
+- first-ID-wins deduplication;
+- unsafe/private media URLs rejected;
+- HTTP media external-only;
+- no autoplay or automatic media loading;
+- HLS/video offered only from the explicit Iowa DOT URL and only inline when browser support is appropriate;
+- dense views cap marker rendering while preserving the queried source count.
+
+The `RECORDED` field is shown only as an Iowa DOT source claim. Peekaboo does not reinterpret it as proof that a camera is currently recording, how long footage is retained, or whether the hardware is healthy.
 
 ## OSM change ledger
 
@@ -191,6 +238,7 @@ Peekaboo treats public infrastructure as shared infrastructure.
 - user-triggered Nominatim place search without autocomplete.
 - session caching to avoid unnecessary repeat requests.
 - source-specific timeouts and failure isolation.
+- viewport-bounded official ArcGIS camera queries instead of whole-state downloads where practical.
 
 ## Privacy and security boundary
 
@@ -212,10 +260,10 @@ Production build:
 npm run build
 ```
 
-The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization and Caltrans CCTV normalization/query semantics.
+The test suite covers OSM normalization, Flock evidence, context filters, geocoding, adaptive-query planning, endpoint health, shard consistency, snapshot/change-ledger behavior, public-webcam URL safety, USGS Ashcam normalization, shared ArcGIS query semantics, Caltrans CCTV and Iowa DOT camera normalization/query semantics.
 
 ## Data-source responsibility
 
-Peekaboo does not control upstream OpenStreetMap, USGS, Caltrans or provider data. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
+Peekaboo does not control upstream OpenStreetMap, USGS, Caltrans, Iowa DOT or provider data. Public records can be incomplete, stale, incorrectly tagged, temporarily unavailable or changed by their publishers.
 
 The interface is designed to expose those distinctions instead of hiding them.
