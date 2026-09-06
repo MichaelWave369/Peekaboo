@@ -13,6 +13,7 @@ import './v13.css'
 import './v14.css'
 import './v15.css'
 import './v16.css'
+import './v17.css'
 import './leafletRegistry.js'
 import App from './App.jsx'
 import AddressSearchPortal from './AddressSearchPortal.jsx'
@@ -21,6 +22,7 @@ import OfficialFeedEnhancer from './OfficialFeedEnhancer.jsx'
 import CaltransFeedEnhancer from './CaltransFeedEnhancer.jsx'
 import IowaFeedEnhancer from './IowaFeedEnhancer.jsx'
 import MetroFeedEnhancer from './MetroFeedEnhancer.jsx'
+import PlaceFeedEnhancer from './PlaceFeedEnhancer.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -33,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <CaltransFeedEnhancer />
       <IowaFeedEnhancer />
       <MetroFeedEnhancer />
+      <PlaceFeedEnhancer />
     </ErrorBoundary>
   </React.StrictMode>,
 )
