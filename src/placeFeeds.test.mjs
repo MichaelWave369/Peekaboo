@@ -37,8 +37,27 @@ test('national park expansion remains government-official', () => {
     'glacier-nps-webcams',
     'great-smokies-nps-webcams',
     'acadia-nps-webcams',
+    'hawaii-volcanoes-nps-webcams',
   ]
   ids.forEach((id) => assert.equal(feeds.find((item) => item.id === id)?.publisherClass, 'government-official', id))
+})
+
+test('wildlife shortcut records preserve Fish and Wildlife Service provenance', () => {
+  const wildlife = placeFeedRegistry().filter((feed) => feed.category === 'wildlife')
+  assert.ok(wildlife.length >= 3)
+  assert.ok(wildlife.every((feed) => feed.publisher === 'U.S. Fish & Wildlife Service'))
+  assert.ok(wildlife.every((feed) => feed.publisherClass === 'government-official'))
+  assert.ok(wildlife.some((feed) => /eagle|osprey/i.test(feed.name)))
+  assert.ok(wildlife.some((feed) => /puffin/i.test(feed.name)))
+  assert.ok(wildlife.some((feed) => /condor/i.test(feed.name)))
+})
+
+test('FAA WeatherCam records remain government-official aviation sources', () => {
+  const aviation = placeFeedRegistry().filter((feed) => feed.category === 'aviation')
+  assert.ok(aviation.length >= 4)
+  assert.ok(aviation.every((feed) => feed.publisher === 'Federal Aviation Administration'))
+  assert.ok(aviation.every((feed) => feed.publisherClass === 'government-official'))
+  assert.ok(aviation.every((feed) => new URL(feed.url).hostname === 'weathercams.faa.gov'))
 })
 
 test('invalid place feed records fail closed', () => {
@@ -58,7 +77,18 @@ test('viewport filtering uses geographic bounds without changing the registry', 
 
 test('park-heavy views can surface multiple official nature sources without changing source ownership', () => {
   const feeds = placeFeedRegistry()
-  const westernParks = feeds.filter((feed) => feed.category === 'park' && feed.publisher === 'National Park Service')
-  assert.ok(westernParks.length >= 8)
-  assert.ok(westernParks.every((feed) => feed.publisherClass === 'government-official'))
+  const westernParks = feeds.filter((feed) => feed.category === 'park' && feed.publisherClass === 'government-official')
+  assert.ok(westernParks.length >= 9)
+})
+
+test('Alaska and Hawaii curated weather records stay geographically filterable', () => {
+  const feeds = placeFeedRegistry()
+  const alaska = visiblePlaceFeeds({ west: -170, south: 50, east: -130, north: 72 }, feeds)
+  assert.ok(alaska.some((feed) => feed.id === 'faa-homer-weathercams'))
+  assert.ok(alaska.some((feed) => feed.id === 'faa-fairbanks-weathercams'))
+  assert.ok(!alaska.some((feed) => feed.id === 'faa-kapalua-weathercams'))
+
+  const hawaii = visiblePlaceFeeds({ west: -161, south: 18, east: -154, north: 23 }, feeds)
+  assert.ok(hawaii.some((feed) => feed.id === 'hawaii-volcanoes-nps-webcams'))
+  assert.ok(hawaii.some((feed) => feed.id === 'faa-kapalua-weathercams'))
 })
