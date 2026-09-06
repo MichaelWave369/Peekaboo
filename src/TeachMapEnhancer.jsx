@@ -4,6 +4,7 @@ import { getPeekabooMap } from './leafletRegistry.js'
 import { placeFeedRegistry, visiblePlaceFeeds } from './placeFeeds.js'
 import { ndbcRegistry, visibleNdbcStations } from './ndbcFeeds.js'
 import { RELEASE_LABEL, RELEASE_SHORT } from './release.js'
+import { useProductState } from './productState.jsx'
 import {
   hashHasExplicitMap,
   markOnboardingSeen,
@@ -21,25 +22,6 @@ function storage() {
   try { return window.localStorage } catch { return null }
 }
 
-function scanButtonState() {
-  const button = document.querySelector('.load-button')
-  const raw = button?.textContent?.trim().toUpperCase() || ''
-  if (raw.includes('QUERYING')) return { label: 'SCANNING OSM…', disabled: true, busy: true }
-  if (raw.includes('RESCAN')) return { label: 'RESCAN THIS VIEW', disabled: Boolean(button?.disabled), busy: false }
-  return { label: 'SCAN THIS VIEW', disabled: Boolean(button?.disabled), busy: false }
-}
-
-function ledgerState() {
-  const panel = document.querySelector('.recent-changes-panel')
-  if (!panel) return null
-  const number = (selector) => Number(panel.querySelector(selector)?.textContent || 0)
-  const added = number('.added strong')
-  const removed = number('.removed strong')
-  const changed = number('.changed strong')
-  if (![added, removed, changed].every(Number.isFinite)) return null
-  return { added, removed, changed }
-}
-
 function stampRelease() {
   const footer = document.querySelector('footer')
   const spans = footer?.querySelectorAll('span') || []
@@ -48,11 +30,17 @@ function stampRelease() {
   const version = release?.querySelector('.panel-heading span:last-child')
   if (version && version.textContent !== RELEASE_SHORT) version.textContent = RELEASE_SHORT
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v22-product-state]')) {
+    const item = document.createElement('li')
+    item.dataset.v22ProductState = 'true'
+    item.textContent = 'v2.2 moves scan/view/ledger product state out of DOM scraping, adds Surveillance / Public Views modes, OSM in-view browsing and selected-record permalinks.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v21-teach-map]')) {
     const item = document.createElement('li')
     item.dataset.v21TeachMap = 'true'
     item.textContent = 'Teach the Map adds first-run guidance, a primary Scan This View control, explicit geolocation, local last-view restore, viewport-aware source coverage hints, and a map-level OSM ledger delta summary.'
-    list.prepend(item)
+    list.appendChild(item)
   }
 }
 
@@ -82,7 +70,7 @@ function Onboarding({ onDismiss, onLocate, locationStatus }) {
   )
 }
 
-function CoveragePanel({ hints, expanded, onToggle }) {
+function CoveragePanel({ hints, expanded, onToggle, onHelp }) {
   const visibleHints = expanded ? hints : hints.slice(0, 3)
   return (
     <section className={`teach-coverage ${expanded ? 'expanded' : ''}`}>
@@ -99,7 +87,10 @@ function CoveragePanel({ hints, expanded, onToggle }) {
         ))}
       </div>
       {!expanded && hints.length > visibleHints.length && <button className="teach-more" type="button" onClick={onToggle}>+{hints.length - visibleHints.length} MORE</button>}
-      <footer>GLOBAL OSM • U.S.-HEAVY OFFICIAL SOURCE COVERAGE</footer>
+      <div className="teach-coverage-footer">
+        <button type="button" onClick={onHelp}>HOW THIS MAP WORKS</button>
+        <span>GLOBAL OSM • U.S.-HEAVY OFFICIAL SOURCE COVERAGE</span>
+      </div>
     </section>
   )
 }
@@ -112,21 +103,21 @@ function LedgerPulse({ delta, onOpen }) {
     <button type="button" className="teach-ledger-pulse" onClick={onOpen} title="Open the OSM change ledger">
       <span>OSM CHANGES</span>
       <b>+{delta.added} NEW</b>
-      <b>−{delta.removed} REMOVED</b>
+      <b>−{delta.removed} REMOVED FROM OSM</b>
       <b>~{delta.changed} CHANGED</b>
     </button>
   )
 }
 
 export default function TeachMapEnhancer() {
+  const { snapshot, invoke } = useProductState()
   const [map, setMap] = useState(() => getPeekabooMap())
   const [host, setHost] = useState(null)
-  const [view, setView] = useState(null)
-  const [scan, setScan] = useState(scanButtonState)
-  const [delta, setDelta] = useState(ledgerState)
   const [coverageOpen, setCoverageOpen] = useState(false)
   const [locationStatus, setLocationStatus] = useState('')
+  const [scanNudge, setScanNudge] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !onboardingSeen(storage()))
+  const [restoreReady, setRestoreReady] = useState(INITIAL_HASH_HAD_MAP)
 
   useEffect(() => {
     const receive = () => setMap(getPeekabooMap())
@@ -163,55 +154,39 @@ export default function TeachMapEnhancer() {
   }, [])
 
   useEffect(() => {
-    const root = document.getElementById('root') || document.body
-    const sync = () => {
-      const nextScan = scanButtonState()
-      setScan((current) => current.label === nextScan.label && current.disabled === nextScan.disabled && current.busy === nextScan.busy ? current : nextScan)
-      const nextDelta = ledgerState()
-      setDelta((current) => JSON.stringify(current) === JSON.stringify(nextDelta) ? current : nextDelta)
-      stampRelease()
+    if (!map || INITIAL_HASH_HAD_MAP) {
+      if (map) setRestoreReady(true)
+      return
     }
-    sync()
-    const observer = new MutationObserver(sync)
-    observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'class'] })
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    if (!map) return undefined
-    let restoring = false
-    if (!INITIAL_HASH_HAD_MAP) {
-      const saved = readSavedView(storage())
-      if (saved) {
-        restoring = true
-        map.setView([saved.lat, saved.lon], saved.zoom, { animate: false })
-        window.setTimeout(() => { restoring = false }, 350)
-      }
-    }
-
-    const sync = () => {
-      const center = map.getCenter()
-      const next = { lat: center.lat, lon: center.lng, zoom: map.getZoom(), bounds: map.getBounds() }
-      setView(next)
-      if (!restoring) writeSavedView(storage(), next)
-    }
-    sync()
-    map.on('moveend zoomend', sync)
-    return () => map.off('moveend zoomend', sync)
+    const saved = readSavedView(storage())
+    if (saved) map.setView([saved.lat, saved.lon], saved.zoom, { animate: false })
+    const timer = window.setTimeout(() => setRestoreReady(true), saved ? 180 : 0)
+    return () => window.clearTimeout(timer)
   }, [map])
 
+  useEffect(() => {
+    if (!restoreReady || !snapshot.view) return
+    writeSavedView(storage(), snapshot.view)
+  }, [restoreReady, snapshot.view])
+
   const hints = useMemo(() => {
-    if (!view) return [{ id: 'osm', label: 'OpenStreetMap surveillance', status: 'SCAN ON DEMAND', note: 'Global public OSM surveillance records are queried only when you press Scan this view.' }]
-    const next = [
-      { id: 'osm', label: 'OpenStreetMap surveillance', status: 'SCAN ON DEMAND', note: 'Global public OSM surveillance records are queried only when you press Scan this view.' },
-      ...regionalSourceHints(view.lat, view.lon),
-    ]
+    const osm = {
+      id: 'osm',
+      label: 'OpenStreetMap surveillance',
+      status: 'SCAN ON DEMAND',
+      note: 'Global public OSM surveillance records are queried only when you press Scan this view.',
+    }
+    const view = snapshot.view
+    if (!view) return [osm]
+
+    const regional = regionalSourceHints(view.lat, view.lon)
+    const next = [...regional, osm]
     const places = visiblePlaceFeeds(view.bounds, PLACE_FEEDS)
     const buoys = visibleNdbcStations(view.bounds, NDBC_FEEDS)
     if (places.length) next.push({ id: 'curated-here', label: 'Curated public views', status: `${places.length} IN VIEW`, note: 'Park, wildlife, institution, aviation, Great Lakes, city or tourism sources are curated inside this viewport.' })
     if (buoys.length) next.push({ id: 'ndbc-here', label: 'NOAA BuoyCAMs', status: `${buoys.length} IN VIEW`, note: 'Vetted NOAA/NDBC BuoyCAM stations are inside the current viewport.' })
     return next
-  }, [view])
+  }, [snapshot.view])
 
   const dismissOnboarding = () => {
     markOnboardingSeen(storage())
@@ -229,9 +204,11 @@ export default function TeachMapEnhancer() {
         const lat = position.coords.latitude
         const lon = position.coords.longitude
         map?.setView([lat, lon], 14)
-        setLocationStatus('LOCATION FOUND • MAP MOVED')
+        setLocationStatus('LOCATION FOUND • MAP MOVED • SCAN THIS VIEW WHEN READY')
+        setScanNudge(true)
+        window.setTimeout(() => setScanNudge(false), 4200)
         markOnboardingSeen(storage())
-        window.setTimeout(() => setShowOnboarding(false), 500)
+        window.setTimeout(() => setShowOnboarding(false), 650)
       },
       (error) => {
         const text = error?.code === 1 ? 'LOCATION PERMISSION WAS NOT GRANTED' : 'LOCATION COULD NOT BE RESOLVED'
@@ -241,29 +218,32 @@ export default function TeachMapEnhancer() {
     )
   }
 
-  const triggerScan = () => {
-    const button = document.querySelector('.load-button')
-    if (button && !button.disabled) button.click()
-  }
-
-  const openLedger = () => {
-    document.documentElement.classList.add('peekaboo-sidebar-open')
-    window.setTimeout(() => document.querySelector('.ledger-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
-  }
+  const triggerScan = () => invoke('scan', false)
+  const openLedger = () => invoke('openLedger')
 
   return (
     <>
       {host && createPortal(
         <>
           <div className="teach-primary-actions">
-            <button type="button" className={`teach-scan ${scan.busy ? 'busy' : ''}`} onClick={triggerScan} disabled={scan.disabled}>
+            <button
+              type="button"
+              className={`teach-scan ${snapshot.scan.loading ? 'busy' : ''} ${scanNudge ? 'nudge' : ''}`.trim()}
+              onClick={triggerScan}
+              disabled={!snapshot.scan.canScan}
+            >
               <span className="teach-scan-eye" />
-              {scan.label}
+              {snapshot.scan.label}
             </button>
             <button type="button" className="teach-locate" onClick={locate} title="Move the map to your current location">◎</button>
           </div>
-          <CoveragePanel hints={hints} expanded={coverageOpen} onToggle={() => setCoverageOpen((value) => !value)} />
-          <LedgerPulse delta={delta} onOpen={openLedger} />
+          <CoveragePanel
+            hints={hints}
+            expanded={coverageOpen}
+            onToggle={() => setCoverageOpen((value) => !value)}
+            onHelp={() => setShowOnboarding(true)}
+          />
+          <LedgerPulse delta={snapshot.ledgerDelta} onOpen={openLedger} />
         </>,
         host,
       )}
