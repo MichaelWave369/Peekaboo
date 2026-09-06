@@ -10,8 +10,8 @@
 
 .teach-primary-actions {
   position: absolute;
-  top: 76px;
   left: 50%;
+  bottom: 24px;
   display: flex;
   gap: 7px;
   transform: translateX(-50%);
@@ -67,7 +67,7 @@
 
 .teach-coverage {
   position: absolute;
-  top: 58px;
+  top: 120px;
   right: 16px;
   width: min(310px, calc(100% - 32px));
   overflow: hidden;
@@ -164,8 +164,8 @@
 
 .teach-ledger-pulse {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  left: 16px;
+  bottom: 76px;
   min-height: 34px;
   display: flex;
   align-items: center;
@@ -284,18 +284,13 @@
   font-weight: 800;
 }
 
-/* The old map HUD remains source truth. Teach controls sit around it rather than covering it. */
-.map-hud { top: 16px; }
-
 @media (max-width: 900px) {
-  .teach-primary-actions { top: 116px; }
-  .teach-coverage { top: 158px; right: 10px; width: min(290px, calc(100% - 20px)); }
-  .teach-ledger-pulse { top: 108px; right: 10px; }
+  .teach-coverage { top: 120px; right: 10px; width: min(290px, calc(100% - 20px)); }
+  .teach-ledger-pulse { left: 10px; bottom: 108px; }
 }
 
 @media (max-width: 620px) {
   .teach-primary-actions {
-    top: auto;
     left: 50%;
     bottom: 52px;
     width: calc(100% - 88px);
@@ -311,9 +306,8 @@
   .teach-coverage:not(.expanded) .teach-more,
   .teach-coverage:not(.expanded) footer { display: none; }
   .teach-ledger-pulse {
-    top: 74px;
     left: 10px;
-    right: auto;
+    bottom: 104px;
     max-width: calc(100% - 20px);
   }
   .teach-ledger-pulse span { display: none; }
