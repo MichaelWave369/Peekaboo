@@ -67,11 +67,17 @@ function stampRelease() {
   const version = release?.querySelector('.panel-heading span:last-child')
   setTextIfChanged(version, RELEASE_SHORT)
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v19-wildlife-faa]')) {
+    const item = document.createElement('li')
+    item.dataset.v19WildlifeFaa = 'true'
+    item.textContent = 'Wildlife + Aviation Weather adds USFWS refuge-cam shortcuts, FAA WeatherCam sites for Alaska/Hawaiʻi, and official Hawaiʻi Volcanoes NPS/USGS webcam coverage with filtered source chips.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v18-noaa-nature]')) {
     const item = document.createElement('li')
     item.dataset.v18NoaaNature = 'true'
     item.textContent = 'NOAA/NDBC BuoyCAMs add documented current ocean images, while the official NPS nature registry expands to Yosemite, Zion, Mount Rainier, Glacier, Great Smokies and Acadia.'
-    list.prepend(item)
+    list.appendChild(item)
   }
   if (list && !list.querySelector('[data-v17-places]')) {
     const item = document.createElement('li')
