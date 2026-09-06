@@ -26,10 +26,19 @@ test('Key West public stream preserves non-city provenance', () => {
   assert.match(feed.summary, /not affiliated with or officially endorsed by the City of Key West/i)
 })
 
-test('Yellowstone and Grand Canyon entries remain government-official', () => {
+test('national park expansion remains government-official', () => {
   const feeds = placeFeedRegistry()
-  assert.equal(feeds.find((item) => item.id === 'yellowstone-nps-webcams').publisherClass, 'government-official')
-  assert.equal(feeds.find((item) => item.id === 'grand-canyon-yavapai').publisherClass, 'government-official')
+  const ids = [
+    'yellowstone-nps-webcams',
+    'grand-canyon-yavapai',
+    'yosemite-nps-webcams',
+    'zion-nps-webcam',
+    'mount-rainier-nps-webcams',
+    'glacier-nps-webcams',
+    'great-smokies-nps-webcams',
+    'acadia-nps-webcams',
+  ]
+  ids.forEach((id) => assert.equal(feeds.find((item) => item.id === id)?.publisherClass, 'government-official', id))
 })
 
 test('invalid place feed records fail closed', () => {
@@ -45,4 +54,11 @@ test('viewport filtering uses geographic bounds without changing the registry', 
   assert.ok(vegas.some((item) => item.id === 'las-vegas-earthcam'))
   assert.ok(!vegas.some((item) => item.id === 'yellowstone-nps-webcams'))
   assert.equal(feeds.length, PLACE_FEEDS.length)
+})
+
+test('park-heavy views can surface multiple official nature sources without changing source ownership', () => {
+  const feeds = placeFeedRegistry()
+  const westernParks = feeds.filter((feed) => feed.category === 'park' && feed.publisher === 'National Park Service')
+  assert.ok(westernParks.length >= 8)
+  assert.ok(westernParks.every((feed) => feed.publisherClass === 'government-official'))
 })
