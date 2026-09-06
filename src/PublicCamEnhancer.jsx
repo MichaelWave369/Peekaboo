@@ -67,11 +67,17 @@ function stampRelease() {
   const version = release?.querySelector('.panel-heading span:last-child')
   setTextIfChanged(version, RELEASE_SHORT)
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v20-source-model]')) {
+    const item = document.createElement('li')
+    item.dataset.v20SourceModel = 'true'
+    item.textContent = 'v2.0 adds institution-official provenance, Smithsonian/Monterey/San Diego wildlife cams, NOAA Great Lakes webcam stations, and dedicated ZOO / AQUARIUM + GREAT LAKES source shortcuts.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v19-wildlife-faa]')) {
     const item = document.createElement('li')
     item.dataset.v19WildlifeFaa = 'true'
     item.textContent = 'Wildlife + Aviation Weather adds USFWS refuge-cam shortcuts, FAA WeatherCam sites for Alaska/Hawaiʻi, and official Hawaiʻi Volcanoes NPS/USGS webcam coverage with filtered source chips.'
-    list.prepend(item)
+    list.appendChild(item)
   }
   if (list && !list.querySelector('[data-v18-noaa-nature]')) {
     const item = document.createElement('li')
