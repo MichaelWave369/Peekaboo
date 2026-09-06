@@ -1,5 +1,71 @@
 # Peekaboo changelog
 
+## 2.2.0
+
+Product-state consolidation and information-architecture pass.
+
+- Added a shared React product-state contract for viewport, scan state, ledger delta, current browse mode and selected-record navigation.
+- `TeachMapEnhancer` no longer infers scan or ledger state from DOM text / mutation observation; those values now come from application state.
+- Added first-class **SURVEILLANCE** and **PUBLIC VIEWS** browse modes so the source rail agrees with the evidence lanes explained during onboarding.
+- Surveillance mode presents OSM type/context controls plus OSM-published webcam controls; Public Views presents official/institution/commercial source controls.
+- Mode presentation hides the other evidence family's map markers without silently clearing that family's explicit layer state.
+- Added a first-class **OSM RESULTS** browser for the current successfully scanned viewport.
+- OSM result browsing is disabled after the map moves until a compatible rescan succeeds, preserving the existing viewport-binding contract.
+- The result sheet caps its UI list at 100 entries while reporting the full filtered count instead of turning a list-rendering cap into a data claim.
+- Added selected OSM record permalinks through a bounded `record=` hash parameter that survives the normal map hash writer.
+- A record permalink restores its map/filter/mode state but still requires the user to explicitly scan OSM before the linked record can be loaded.
+- Added **COPY RECORD LINK** and **SHARE RECORD** actions to the OSM details drawer.
+- Added a reusable **HOW THIS MAP WORKS** action inside `WHAT WORKS HERE`, allowing returning users to reopen the three-lane explanation without clearing local storage.
+- Geolocation now explicitly nudges **SCAN THIS VIEW** after moving the map while preserving the rule that location permission never auto-starts an OSM query.
+- Coverage hints prioritize applicable regional source policy before generic OSM/curated-source summaries.
+- Introduced `product.css` as the forward product-design layer rather than adding another version-numbered stylesheet.
+- Added tests for product-mode normalization, safe record IDs, hash persistence and deterministic result ordering.
+
+### v2.2 semantics
+
+Browse mode is presentation and interaction state, not evidence conversion. Switching modes never turns an official public feed into an OSM record or vice versa. Explicitly enabled source-layer state is retained when moving between modes, while the non-active evidence family is hidden from map interaction.
+
+A selected-record permalink identifies a public OSM record and the viewport/filter context needed to look for it. Opening that link does not silently query OSM. The user still chooses **Scan this view**.
+
+## 2.1.0
+
+First-run comprehension and map-level product clarity.
+
+- Added one-time onboarding that states the product contract directly: public views are listed, OSM surveillance is scanned on demand, and an empty map does not prove an absence of cameras.
+- Added a prominent map-level **SCAN THIS VIEW / RESCAN THIS VIEW / SCANNING OSM…** control that delegates to the existing viewport-bound acquisition path.
+- Added explicit **USE MY LOCATION** navigation. Geolocation moves the map only and never automatically scans OSM.
+- Added local last-viewport persistence while preserving shared-link precedence: an explicit `map=` hash always wins over saved local history.
+- Added a viewport-aware **WHAT WORKS HERE** panel with `IN APP`, `KEY REQUIRED`, `OFFICIAL VIEWER` and `SCAN ON DEMAND` source-policy hints.
+- NYC now explicitly exposes the 511NY developer-key limitation rather than making unavailable native integration look like zero cameras.
+- Added in-viewport curated public-view and NOAA/NDBC BuoyCAM counts to coverage hints.
+- Added a map-level OSM ledger pulse for newly mapped, removed-from-OSM and metadata-changed records.
+- Preserved the exact ledger semantics: `REMOVED FROM OSM` is a database-record claim, never a physical-camera-removal claim.
+- Documented deferred structural work instead of implementing deeper mode/list/permalink features through additional DOM observers.
+
+## 2.0.0
+
+Publisher-model expansion for institution-owned public cameras and Great Lakes environmental sources.
+
+- Added **INSTITUTION OFFICIAL** as a third first-class curated publisher class alongside **GOVERNMENT OFFICIAL** and **PUBLIC COMMERCIAL**.
+- Added institution-published public camera collections for Smithsonian's National Zoo, Monterey Bay Aquarium, San Diego Zoo and San Diego Zoo Safari Park.
+- Added a **ZOO / AQUARIUM** curated-source shortcut.
+- Added official NOAA Great Lakes Environmental Research Laboratory station/webcam records for South Haven, Thunder Bay Island, Alpena, Muskegon Pier Light and Toledo Channel Marker #2.
+- Added a **GREAT LAKES** shortcut while keeping NOAA/GLERL records government-official.
+- Added regression coverage preventing commercial tourism sources from silently promoting into government/institution classes.
+- Added distinct visual treatment for institution-official publishers.
+
+## 1.9.0
+
+Wildlife, aviation-weather and Hawaiʻi volcano source expansion.
+
+- Added a **WILDLIFE** shortcut over canonical U.S. Fish & Wildlife Service refuge-camera records.
+- Added USFWS public wildlife-camera sources including Blackwater eagle/osprey, Seal Island puffins and Hopper Mountain condors.
+- Added an **FAA WX** shortcut and seeded official FAA WeatherCam locations for Alaska and Hawaiʻi.
+- FAA camera imagery remains source-viewer based; Peekaboo does not scrape hidden image endpoints from the FAA application.
+- Added official Hawaiʻi Volcanoes National Park / USGS Hawaiian Volcano Observatory webcam coverage.
+- Preserved seasonal/weather/outage caveats instead of treating every wildlife/aviation/volcano source as continuously live.
+- Implemented WILDLIFE and FAA WX as filtered views over the canonical Places registry rather than duplicated records.
+
 ## 1.8.0
 
 NOAA/NDBC marine-camera expansion plus a broader official National Park webcam registry.
