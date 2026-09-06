@@ -30,19 +30,36 @@
   color: #456019;
 }
 
-/* Mode now determines what the source rail is trying to say. */
+/* Mode now determines what the source rail is trying to say. Explicitly enabled layers keep their own state; the mode controls which evidence family is presented and interactive on the map. */
 .map-filter-chips { top: 118px !important; }
 .sidebar { top: 166px !important; }
 .osm-filter-chip-group { display: contents; }
-.mode-surveillance #peekaboo-live-cam-chip-host,
+
 .mode-surveillance #peekaboo-official-cam-chip-host,
 .mode-surveillance #peekaboo-caltrans-chip-host,
 .mode-surveillance #peekaboo-iowa-chip-host,
 .mode-surveillance #peekaboo-metro-chip-host,
 .mode-surveillance #peekaboo-place-chip-host,
 .mode-surveillance #peekaboo-ndbc-chip-host { display: none !important; }
-.mode-public .osm-filter-chip-group { display: none !important; }
+.mode-public .osm-filter-chip-group,
+.mode-public #peekaboo-live-cam-chip-host { display: none !important; }
 .mode-public .map-mini-legend { display: none; }
+
+.mode-public .leaflet-marker-icon:has(.map-marker),
+.mode-public .leaflet-marker-icon:has(.map-cluster) { display: none !important; }
+.mode-surveillance .leaflet-marker-icon:has(.official-feed-marker),
+.mode-surveillance .leaflet-marker-icon:has(.caltrans-feed-marker),
+.mode-surveillance .leaflet-marker-icon:has(.iowa-feed-marker),
+.mode-surveillance .leaflet-marker-icon:has(.metro-feed-marker),
+.mode-surveillance .leaflet-marker-icon:has(.place-feed-marker),
+.mode-surveillance .leaflet-marker-icon:has(.ndbc-feed-marker) { display: none !important; }
+
+.mode-surveillance #peekaboo-official-source-panel-host,
+.mode-surveillance #peekaboo-caltrans-panel-host,
+.mode-surveillance #peekaboo-iowa-panel-host,
+.mode-surveillance #peekaboo-metro-panel-host,
+.mode-surveillance #peekaboo-place-panel-host,
+.mode-surveillance #peekaboo-ndbc-panel-host { display: none !important; }
 
 .osm-results-toggle {
   position: absolute;
@@ -63,6 +80,7 @@
 }
 .osm-results-toggle strong { margin-left: 6px; color: #c8e78e; }
 .osm-results-toggle.stale { border-color: #81672f; color: #e1cb8e; }
+.osm-results-toggle:disabled { cursor: default; opacity: .86; }
 
 .osm-results-panel {
   position: absolute;
@@ -214,8 +232,6 @@
   cursor: pointer;
 }
 .teach-coverage-footer span { color: #65767d; font-size: 6px; letter-spacing: .07em; text-align: right; }
-
-/* Do not let the old footer selector style the coverage footer like the application footer. */
 .teach-coverage > footer { display: none !important; }
 
 @media (max-width: 900px) {
