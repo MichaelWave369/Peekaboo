@@ -170,6 +170,19 @@ export default function PlaceFeedEnhancer() {
     }
   }, [map, enabled, visible])
 
+  useEffect(() => {
+    if (!enabled) setSelected(null)
+  }, [enabled])
+
+  useEffect(() => {
+    if (!selected) return undefined
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('.detail-drawer.open:not(.place-feed-drawer)')) setSelected(null)
+    })
+    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [selected])
+
   return (
     <>
       {chipHost && createPortal(
