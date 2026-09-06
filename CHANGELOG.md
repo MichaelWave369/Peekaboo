@@ -1,5 +1,28 @@
 # Peekaboo changelog
 
+## 1.8.0
+
+NOAA/NDBC marine-camera expansion plus a broader official National Park webcam registry.
+
+- Added a dedicated **NOAA BUOYS** layer backed by a vetted registry of NOAA National Data Buoy Center BuoyCAM station IDs and coordinates.
+- Added current-image viewing through NDBC's documented `buoycam.php?station=...` endpoint.
+- BuoyCAM media loads only after explicit user action and manual refresh stays on the same documented NOAA endpoint.
+- Added explicit NOAA source receipts and a dedicated ocean/weather camera drawer.
+- Added source-aware failure handling for nighttime, unavailable or too-old BuoyCAM imagery; Peekaboo does not invent alternate image paths.
+- NOAA stations remain separate from OSM surveillance records, OSM webcams, transportation sources and commercial tourism streams.
+- Added regression tests for station validation, duplicate handling, current-image URL construction and viewport filtering.
+- Expanded the official NPS Places + Nature registry with Yosemite, Zion, Mount Rainier, Glacier, Great Smoky Mountains and Acadia.
+- Added regressions ensuring the expanded park set remains government-official rather than inheriting commercial-source semantics.
+- Kept the growing quick-source rail horizontally scrollable with a visible thin scrollbar for easier source discovery.
+- Hardened NOAA drawer lifecycle so disabling the layer closes its inspector rather than leaving hidden-source UI behind.
+- Added `docs/NOAA_NDBC_BUOYCAMS.md` and updated the README/release panel for the five-lane evidence model.
+
+### NOAA / NDBC semantics
+
+A NOAA BuoyCAM marker means Peekaboo has a vetted public NDBC station record and uses NOAA's documented most-recent-image endpoint. NDBC generally operates BuoyCAMs during daylight and documents a source-side age cutoff for its current-image endpoint. Peekaboo therefore does not invent a separate freshness score.
+
+A failed image load can mean nighttime, a stale image, station outage or another source-side condition. It is not treated as proof that the physical camera was removed.
+
 ## 1.7.0
 
 Places + Nature expansion with source-rail polish and explicit official-vs-commercial place provenance.
