@@ -7,6 +7,12 @@ export const PLACE_FEED_STATUS = {
   'public-viewer': 'PUBLIC VIEWER',
 }
 
+export const PLACE_PUBLISHER_CLASS = {
+  'government-official': 'GOVERNMENT OFFICIAL',
+  'institution-official': 'INSTITUTION OFFICIAL',
+  'commercial-public': 'PUBLIC COMMERCIAL',
+}
+
 export const PLACE_FEEDS = [
   {
     id: 'yellowstone-nps-webcams',
@@ -72,21 +78,21 @@ export const PLACE_FEEDS = [
     id: 'fws-blackwater-wildlife-cams', name: 'Blackwater NWR — Eagle + Osprey Cams', place: 'Blackwater National Wildlife Refuge', region: 'MD', category: 'wildlife', status: 'official-live',
     publisherClass: 'government-official', publisher: 'U.S. Fish & Wildlife Service', lat: 38.4454, lon: -76.0913,
     url: 'https://www.fws.gov/story/wildlife-webcams',
-    summary: 'USFWS lists live eagle and osprey cameras at Blackwater National Wildlife Refuge. Refuge documentation also describes live eagle/osprey video at the visitor center. Wildlife cameras may be seasonal or weather-dependent.',
+    summary: 'USFWS lists live eagle and osprey cameras at Blackwater National Wildlife Refuge. Wildlife cameras may be seasonal or weather-dependent.',
     media: 'live-video', externalOnly: true,
   },
   {
     id: 'fws-seal-island-puffin-cam', name: 'Seal Island NWR — Puffin Cam', place: 'Seal Island National Wildlife Refuge', region: 'ME', category: 'wildlife', status: 'official-live',
     publisherClass: 'government-official', publisher: 'U.S. Fish & Wildlife Service', lat: 43.8900, lon: -68.7400,
     url: 'https://www.fws.gov/story/wildlife-webcams',
-    summary: 'USFWS lists a puffin camera for Seal Island National Wildlife Refuge. The island is closed to public access and is important seabird nesting habitat; webcam availability can be seasonal and weather-dependent.',
+    summary: 'USFWS lists a puffin camera for Seal Island National Wildlife Refuge. Webcam availability can be seasonal and weather-dependent.',
     media: 'live-video', externalOnly: true,
   },
   {
     id: 'fws-hopper-mountain-condor-cam', name: 'Hopper Mountain NWR — Condor Cam', place: 'Hopper Mountain National Wildlife Refuge', region: 'CA', category: 'wildlife', status: 'official-live',
     publisherClass: 'government-official', publisher: 'U.S. Fish & Wildlife Service', lat: 34.4600, lon: -118.7900,
     url: 'https://www.fws.gov/story/wildlife-webcams',
-    summary: 'USFWS lists a California condor camera associated with Hopper Mountain National Wildlife Refuge. The refuge is closed to general public access because of sensitive condor-recovery work; the webcam provides remote public viewing.',
+    summary: 'USFWS lists a California condor camera associated with Hopper Mountain National Wildlife Refuge. The webcam provides remote public viewing of sensitive condor-recovery habitat.',
     media: 'live-video', externalOnly: true,
   },
 
@@ -106,13 +112,78 @@ export const PLACE_FEEDS = [
     id: 'faa-kapalua-weathercams', name: 'FAA WeatherCams — Kapalua', place: 'Kapalua', region: 'HI', category: 'aviation', status: 'official-viewer',
     publisherClass: 'government-official', publisher: 'Federal Aviation Administration', lat: 20.9630, lon: -156.6747,
     url: 'https://weathercams.faa.gov/cameras/state/HI/cameraSite/589/details/pdfs',
-    summary: 'Official FAA Weather Camera site for Kapalua, Hawaiʻi, with north/east/south/west visual weather views and associated aviation-weather context.', media: 'multi-camera', externalOnly: true,
+    summary: 'Official FAA Weather Camera site for Kapalua, Hawaiʻi, with multiple directional visual-weather views and associated aviation-weather context.', media: 'multi-camera', externalOnly: true,
   },
   {
     id: 'faa-hawaii-weathercams-directory', name: 'FAA WeatherCams — Hawaiʻi Network', place: 'Hawaiʻi', region: 'HI', category: 'aviation', status: 'official-viewer',
     publisherClass: 'government-official', publisher: 'Federal Aviation Administration', lat: 20.7000, lon: -157.2000,
     url: 'https://weathercams.faa.gov/cameras/state/HI',
-    summary: 'Official FAA Hawaiʻi weather-camera directory. The network includes dozens of sites across the islands and provides multiple visual directions at many locations.', media: 'camera-directory', externalOnly: true,
+    summary: 'Official FAA Hawaiʻi weather-camera directory with public aviation-weather views across the islands.', media: 'camera-directory', externalOnly: true,
+  },
+
+  {
+    id: 'smithsonian-national-zoo-cams', name: 'Smithsonian National Zoo — Animal Cams', place: 'Washington, DC', region: 'DC', category: 'institution', status: 'official-live',
+    publisherClass: 'institution-official', publisher: "Smithsonian's National Zoo and Conservation Biology Institute", lat: 38.9296, lon: -77.0498,
+    url: 'https://nationalzoo.si.edu/webcams',
+    summary: 'Institution-published live animal cams for giant pandas, elephants, lions, black-footed ferrets and naked mole-rats. Availability follows Smithsonian operating conditions and source policy.',
+    media: 'live-video', externalOnly: true,
+  },
+  {
+    id: 'monterey-bay-aquarium-live-cams', name: 'Monterey Bay Aquarium — Live Cams', place: 'Monterey', region: 'CA', category: 'institution', status: 'official-live',
+    publisherClass: 'institution-official', publisher: 'Monterey Bay Aquarium', lat: 36.6180, lon: -121.9010,
+    url: 'https://www.montereybayaquarium.org/cams-videos/live-cams',
+    summary: 'Aquarium-published live cams including sea otters, jellies, kelp forest, aviary, sharks, open sea and Monterey Bay views. Several exhibit cams publish daytime live hours and may show prerecorded footage off-hours.',
+    media: 'mixed', externalOnly: true,
+  },
+  {
+    id: 'san-diego-zoo-live-cams', name: 'San Diego Zoo — Live Cameras', place: 'San Diego', region: 'CA', category: 'institution', status: 'official-live',
+    publisherClass: 'institution-official', publisher: 'San Diego Zoo Wildlife Alliance', lat: 32.7353, lon: -117.1490,
+    url: 'https://zoo.sandiegozoo.org/live-cameras',
+    summary: 'Zoo-published live wildlife cameras including giant pandas, koalas, baboons, polar bears, penguins, hippos and apes. Animals may be indoors or outside the camera frame.',
+    media: 'live-video', externalOnly: true,
+  },
+  {
+    id: 'san-diego-safari-park-live-cams', name: 'San Diego Zoo Safari Park — Live Cameras', place: 'Escondido / San Diego Zoo Safari Park', region: 'CA', category: 'institution', status: 'official-live',
+    publisherClass: 'institution-official', publisher: 'San Diego Zoo Wildlife Alliance', lat: 33.0975, lon: -116.9958,
+    url: 'https://zoo.sandiegozoo.org/live-cameras',
+    summary: 'Safari Park live-camera collection published by San Diego Zoo Wildlife Alliance, including tigers, elephants, platypuses, giraffes, burrowing owls and other wildlife views.',
+    media: 'live-video', externalOnly: true,
+  },
+
+  {
+    id: 'noaa-glerl-south-haven', name: 'NOAA Great Lakes — South Haven', place: 'South Haven', region: 'MI', category: 'great-lakes', status: 'official-viewer',
+    publisherClass: 'government-official', publisher: 'NOAA Great Lakes Environmental Research Laboratory', lat: 42.4014, lon: -86.2889,
+    url: 'https://glerl.noaa.gov/metdata/shv/',
+    summary: 'Official NOAA/GLERL real-time meteorological station and webcam page for South Haven. GLERL describes webcam images as updating about every 30 minutes on the station page.',
+    media: 'snapshot-series', externalOnly: true,
+  },
+  {
+    id: 'noaa-glerl-thunder-bay-island', name: 'NOAA Great Lakes — Thunder Bay Island', place: 'Thunder Bay Island', region: 'MI', category: 'great-lakes', status: 'official-viewer',
+    publisherClass: 'government-official', publisher: 'NOAA Great Lakes Environmental Research Laboratory', lat: 45.0347, lon: -83.1942,
+    url: 'https://glerl.noaa.gov/metdata/tbi/',
+    summary: 'Official NOAA/GLERL meteorological and webcam station on Thunder Bay Island. The station page publishes multiple recent webcam views and reports an hourly image cadence.',
+    media: 'snapshot-series', externalOnly: true,
+  },
+  {
+    id: 'noaa-glerl-alpena', name: 'NOAA Great Lakes — Alpena', place: 'Alpena', region: 'MI', category: 'great-lakes', status: 'official-viewer',
+    publisherClass: 'government-official', publisher: 'NOAA Great Lakes Environmental Research Laboratory', lat: 45.0597, lon: -83.4236,
+    url: 'https://www.glerl.noaa.gov/metdata/apn/',
+    summary: 'Official NOAA/GLERL Alpena meteorological and webcam station, operated in collaboration with Thunder Bay National Marine Sanctuary.',
+    media: 'snapshot-series', externalOnly: true,
+  },
+  {
+    id: 'noaa-glerl-muskegon-pier-light', name: 'NOAA Great Lakes — Muskegon Pier Light', place: 'Muskegon', region: 'MI', category: 'great-lakes', status: 'official-viewer',
+    publisherClass: 'government-official', publisher: 'NOAA Great Lakes Environmental Research Laboratory', lat: 43.2267, lon: -86.3414,
+    url: 'https://glerl.noaa.gov/metdata/mkglight/',
+    summary: 'Official NOAA/GLERL Muskegon Pier Light meteorological and webcam station page with current environmental observations and public imagery.',
+    media: 'snapshot-series', externalOnly: true,
+  },
+  {
+    id: 'noaa-glerl-toledo-channel-marker', name: 'NOAA Great Lakes — Toledo Channel Marker #2', place: 'Western Lake Erie / Toledo', region: 'OH', category: 'great-lakes', status: 'official-viewer',
+    publisherClass: 'government-official', publisher: 'NOAA Great Lakes Environmental Research Laboratory', lat: 41.82555, lon: -83.19362,
+    url: 'https://glerl.noaa.gov/res/recon/station-cmt.html',
+    summary: 'Official NOAA/GLERL ReCON station at Toledo Channel Marker #2 with current environmental observations and browsable webcam photos.',
+    media: 'snapshot-series', externalOnly: true,
   },
 
   {
@@ -154,7 +225,7 @@ export function normalizedPlaceFeed(feed = {}) {
   if (!feed.id || !feed.name || !Number.isFinite(lat) || !Number.isFinite(lon)) return null
   if (lat < -90 || lat > 90 || lon < -180 || lon > 180 || !url) return null
   if (!PLACE_FEED_STATUS[feed.status]) return null
-  if (!['government-official', 'commercial-public'].includes(feed.publisherClass)) return null
+  if (!PLACE_PUBLISHER_CLASS[feed.publisherClass]) return null
   return { ...feed, lat, lon, url }
 }
 
