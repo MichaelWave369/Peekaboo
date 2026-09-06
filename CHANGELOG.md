@@ -1,5 +1,30 @@
 # Peekaboo changelog
 
+## 1.6.0
+
+Major-metro camera expansion with explicit coverage-state semantics.
+
+- Added **Denver / CDOT** as a viewport-bound official-source layer using camera data currently exposed through a CDOT-owned GIS host.
+- Added **Chicago / Illinois public traffic cameras** as a viewport-bound public ArcGIS source with snapshot, direction and source-age metadata.
+- Added a **Major Metros** coverage matrix for Los Angeles, Denver, Chicago, New York City, Miami, Detroit, Tucson and Austin.
+- Coverage states are explicit: **IN APP**, **OFFICIAL VIEWER**, or **KEY REQUIRED**.
+- Los Angeles remains covered by the existing Caltrans adapter.
+- New York City / 511NY and Tucson / AZ511 are marked **KEY REQUIRED** because their documented camera APIs require developer credentials that are not safe to publish in the GitHub Pages client bundle.
+- Miami / FL511, Detroit / Mi Drive and Austin / TxDOT remain **OFFICIAL VIEWER** integrations until Peekaboo has a stable no-secret machine-readable camera contract for them.
+- Denver explicitly discloses that the currently integrated machine-readable source is hosted at CDOT's `test.maps.codot.gov`; COtrip remains the authoritative public fallback.
+- Chicago is labeled conservatively as an Illinois public traffic-camera source rather than assuming uniform ownership for every individual record.
+- Denver and Chicago use the reusable ArcGIS envelope contract with viewport fingerprints, 2,000-record transfer ceilings, fail-closed truncation, source-error propagation, coordinate validation and deterministic deduplication.
+- Both metro sources use two-minute viewport-keyed session caches, 12-second timeouts and stale-view invalidation after the map moves.
+- Media never autoloads or autoplays. Peekaboo only offers explicit source-published links, with HTTPS inline media limited to supported image/video/HLS types.
+- Added a 300-marker rendering cap per metro source while preserving the full query count. The panel explicitly reports `N IN QUERY • 300 RENDERED` when the cap is active.
+- Added regressions for Denver/Chicago query bounding, source-specific normalization, unsafe URL rejection, source-age/status semantics, transfer-limit propagation, deduplication and metro coverage-state policy.
+
+### Major-metro semantics
+
+A city marked **IN APP** has a Peekaboo source adapter. **OFFICIAL VIEWER** means the public agency publishes cameras but Peekaboo does not yet have a stable no-secret machine-readable integration contract. **KEY REQUIRED** means the documented API requires credentials, so Peekaboo refuses to embed a secret in its public client bundle.
+
+The metro adapters remain separate from OpenStreetMap surveillance records and never enter the OSM change ledger.
+
 ## 1.5.0
 
 Reusable ArcGIS official-feed foundation plus Iowa DOT / Iowa 511 cameras.
