@@ -67,11 +67,17 @@ function stampRelease() {
   const version = release?.querySelector('.panel-heading span:last-child')
   setTextIfChanged(version, RELEASE_SHORT)
   const list = release?.querySelector('ul')
+  if (list && !list.querySelector('[data-v16-major-metros]')) {
+    const item = document.createElement('li')
+    item.dataset.v16MajorMetros = 'true'
+    item.textContent = 'Major-metro expansion adds Denver/CDOT and Chicago/Illinois camera layers plus an explicit metro coverage matrix for LA, NYC, Miami, Detroit, Tucson and Austin.'
+    list.prepend(item)
+  }
   if (list && !list.querySelector('[data-v15-iowa-dot]')) {
     const item = document.createElement('li')
     item.dataset.v15IowaDot = 'true'
-    item.textContent = 'Iowa DOT / Iowa 511 is now a separate official-source layer using the state’s credential-free camera FeatureServer, with viewport binding, image/video evidence and shared ArcGIS fail-closed query semantics.'
-    list.prepend(item)
+    item.textContent = 'Iowa DOT / Iowa 511 is a separate official-source layer using the state’s credential-free camera FeatureServer, with viewport binding, image/video evidence and shared ArcGIS fail-closed query semantics.'
+    list.appendChild(item)
   }
   if (list && !list.querySelector('[data-v14-caltrans]')) {
     const item = document.createElement('li')
@@ -201,7 +207,7 @@ export default function PublicCamEnhancer() {
         setNoticeHost((current) => current === notice ? current : notice)
       }
 
-      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer):not(.caltrans-feed-drawer):not(.iowa-feed-drawer)')
+      const drawer = document.querySelector('.detail-drawer.open:not(.official-feed-drawer):not(.caltrans-feed-drawer):not(.iowa-feed-drawer):not(.metro-feed-drawer)')
       const raw = drawer?.querySelector('.raw-tags pre')
       if (!drawer || !raw) {
         rawTextRef.current = ''
